@@ -1,5 +1,11 @@
+{
+  pkgs ? let
+    flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
+    inherit (flakeLock.nodes.nixpkgs) locked;
+  in import (builtins.fetchTree locked) { },
+}:
+
 let
-  pkgs = import /home/adisbladis/sauce/github.com/NixOS/nixpkgs { };
   inherit (pkgs) lib stdenv;
 
   go = pkgs.go.overrideAttrs(old: {
@@ -10,7 +16,7 @@ let
 
   cacher = stdenv.mkDerivation {
     name = "gocache";
-    src = ./go-tool-cache;
+    src = ./gobuild-nix-cacher;
     nativeBuildInputs = [
       hooks.buildGo
       hooks.installGo
@@ -44,13 +50,7 @@ let
         NIX_GOCACHE_VERBOSE = "1";
       };
 
-      unpackPhase = ''
-        mkdir -p vendor/github.com/alecthomas
-        ln -s $src vendor/github.com/alecthomas/kong
-      '';
-
       preBuild = ''
-        cd vendor/github.com/alecthomas/kong
         export NIX_GOCACHE_OUT="$out"
       '';
 
@@ -82,6 +82,7 @@ in
 
     preBuild = ''
       export NIX_GOCACHE_OUT=$(mktemp -d)
+
       mkdir -p vendor/github.com/alecthomas
       cp ${finalAttrs.src}/modules.txt vendor/modules.txt
       ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong

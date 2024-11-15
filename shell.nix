@@ -1,5 +1,8 @@
 {
-  pkgs ? import /home/adisbladis/sauce/github.com/NixOS/nixpkgs { },
+  pkgs ? let
+    flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
+    inherit (flakeLock.nodes.nixpkgs) locked;
+  in import (builtins.fetchTree locked) { },
 }:
 
 let
