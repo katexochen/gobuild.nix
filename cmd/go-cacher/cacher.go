@@ -16,9 +16,8 @@ import (
 )
 
 var (
-	dir        = flag.String("cache-dir", "", "cache directory; empty means automatic")
-	serverBase = flag.String("cache-server", "", "optional cache server HTTP prefix (scheme and authority only); should be low latency. empty means to not use one.")
-	verbose    = flag.Bool("verbose", false, "be verbose")
+	dir     = flag.String("cache-dir", "", "cache directory; empty means automatic")
+	verbose = flag.Bool("verbose", false, "be verbose")
 )
 
 func main() {
@@ -49,16 +48,6 @@ func main() {
 		},
 		Get: dc.Get,
 		Put: dc.Put,
-	}
-
-	if *serverBase != "" {
-		hc := &cachers.HTTPClient{
-			BaseURL: *serverBase,
-			Disk:    dc,
-			Verbose: *verbose,
-		}
-		p.Get = hc.Get
-		p.Put = hc.Put
 	}
 
 	if err := p.Run(); err != nil {
