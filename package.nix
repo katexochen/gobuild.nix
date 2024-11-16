@@ -1,75 +1,110 @@
 {
-  pkgs ? let
-    flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
-    inherit (flakeLock.nodes.nixpkgs) locked;
-  in import (builtins.fetchTree locked) { },
+  pkgs ?
+    let
+      flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
+      inherit (flakeLock.nodes.nixpkgs) locked;
+    in
+    import (builtins.fetchTree locked) { },
 }:
 
 let
-  inherit (pkgs) lib stdenv;
+  mkGoPackages =
+    {
+      go,
+      newScope,
+      stdenv,
+      lib,
+    }:
+    lib.makeScope newScope (
+      final:
+      let
+        inherit (final) callPackage;
+      in
+      {
 
-  go = pkgs.go.overrideAttrs(old: {
-    env.GOEXPERIMENT="cacheprog";
-  });
+        # Tooling
 
-  hooks = pkgs.callPackages ./hooks {
-    inherit gobuild-nix-cacher;
-    inherit go;
-  };
+        inherit go;
 
-  gobuild-nix-cacher = stdenv.mkDerivation {
-    name = "gobuild-nix-cacher";
-    src = ./gobuild-nix-cacher;
-    nativeBuildInputs = [
-      hooks.buildGo
-      hooks.installGo
-    ];
-    meta.mainProgram = "gobuild-nix-cacher";
-  };
+        goPackages = final;
+
+        gobuild-nix-cacher = callPackage (
+          { stdenv, hooks }:
+          stdenv.mkDerivation {
+            name = "gobuild-nix-cacher";
+            src = ./gobuild-nix-cacher;
+            nativeBuildInputs = [
+              hooks.buildGo
+              hooks.installGo
+            ];
+            meta.mainProgram = "gobuild-nix-cacher";
+          }
+        ) { };
+
+        hooks = callPackage ./hooks { };
+
+        # Packages
+
+        "github.com/alecthomas/kong" = callPackage (
+          {
+            stdenv,
+            hooks,
+            fetchFromGitHub,
+          }:
+          stdenv.mkDerivation {
+            pname = "github.com/alecthomas/kong";
+            version = "1.4.0";
+
+            src = fetchFromGitHub {
+              owner = "alecthomas";
+              repo = "kong";
+              rev = "v1.4.0";
+              hash = "sha256-xfjPNqMa5Qtah4vuSy3n0Zn/G7mtufKlOiTzUemzFcQ=";
+            };
+
+            nativeBuildInputs = [
+              hooks.configureGoCache
+              hooks.buildGo
+              hooks.buildGoCacheOutputSetupHook
+            ];
+          }
+        ) { };
+      }
+    );
 
   # Go package set containing build cache output & setup hooks for Go vendor
-  goPackages = {
-    # Contains build cache output
-    "github.com/alecthomas/kong" = stdenv.mkDerivation {
-      pname = "github.com/alecthomas/kong";
-      version = "1.4.0";
-
-      src = pkgs.fetchFromGitHub {
-        owner = "alecthomas";
-        repo = "kong";
-        rev = "v1.4.0";
-        hash = "sha256-xfjPNqMa5Qtah4vuSy3n0Zn/G7mtufKlOiTzUemzFcQ=";
-      };
-
-      nativeBuildInputs = [
-        hooks.configureGoCache
-        hooks.buildGo
-        hooks.buildGoCacheOutputSetupHook
-      ];
-    };
+  goPackages = pkgs.callPackage mkGoPackages {
+    go = pkgs.go.overrideAttrs (old: {
+      env.GOEXPERIMENT = "cacheprog";
+    });
   };
 
 in
-  stdenv.mkDerivation (finalAttrs: {
-    name = "simple-package";
 
-    src = ./fixtures/simple-package;
+pkgs.stdenv.mkDerivation (finalAttrs: {
+  name = "simple-package";
 
-    nativeBuildInputs = [
+  src = ./fixtures/simple-package;
+
+  nativeBuildInputs =
+    let
+      inherit (goPackages) hooks;
+    in
+    [
       hooks.configureGoCache
       hooks.buildGo
       hooks.installGo
     ];
 
-    buildInputs = [
-      goPackages."github.com/alecthomas/kong"
-    ];
+  buildInputs = [
+    goPackages."github.com/alecthomas/kong"
+  ];
 
-    preBuild = ''
-      export NIX_GOCACHE_OUT=$(mktemp -d)
+  preBuild = ''
+    export NIX_GOCACHE_OUT=$(mktemp -d)
 
-      mkdir -p vendor/github.com/alecthomas
-      cp ${finalAttrs.src}/modules.txt vendor/modules.txt
-      ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
-    '';
-  })
+    mkdir -p vendor/github.com/alecthomas
+    cp ${finalAttrs.src}/modules.txt vendor/modules.txt
+    ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
+  '';
+})

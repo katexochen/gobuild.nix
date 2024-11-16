@@ -1,13 +1,15 @@
 {
-  pkgs ? let
-    flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
-    inherit (flakeLock.nodes.nixpkgs) locked;
-  in import (builtins.fetchTree locked) { },
+  pkgs ?
+    let
+      flakeLock = builtins.fromJSON (builtins.readFile ./flake.lock);
+      inherit (flakeLock.nodes.nixpkgs) locked;
+    in
+    import (builtins.fetchTree locked) { },
 }:
 
 let
-  go = pkgs.go.overrideAttrs(old: {
-    env.GOEXPERIMENT="cacheprog";
+  go = pkgs.go.overrideAttrs (old: {
+    env.GOEXPERIMENT = "cacheprog";
   });
 
   hooks = pkgs.callPackages ./hooks { inherit go; };
@@ -22,7 +24,6 @@ let
     meta.mainProgram = "gobuild-nix-cacher";
   };
 
-
 in
 
 pkgs.mkShell {
@@ -33,7 +34,7 @@ pkgs.mkShell {
   ];
 
   env = {
-    GOEXPERIMENT="cacheprog";
+    GOEXPERIMENT = "cacheprog";
     GOCACHEPROG = pkgs.lib.getExe cacher;
   };
 
