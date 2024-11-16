@@ -29,7 +29,7 @@ in
 pkgs.mkShell {
   packages = [
     go
-    (import ./package.nix { })
+    (import ./package.nix { inherit pkgs; })
     cacher
   ];
 
