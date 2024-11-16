@@ -12,7 +12,6 @@ let
     {
       go,
       newScope,
-      stdenv,
       lib,
     }:
     lib.makeScope newScope (
@@ -45,6 +44,30 @@ let
 
         # Packages
 
+        "golang.org/x/sys" = callPackage (
+          {
+            stdenv,
+            hooks,
+            fetchgit,
+          }:
+          stdenv.mkDerivation (finalAttrs: {
+            pname = "golang.org/x/sys";
+            version = "0.27.0";
+
+            src = fetchgit {
+              url = "https://go.googlesource.com/sys";
+              rev = "v${finalAttrs.version}";
+              hash = "sha256-+d5AljNfSrDuYxk3qCRw4dHkYVELudXJEh6aN8BYPhM=";
+            };
+
+            nativeBuildInputs = [
+              hooks.configureGoCache
+              hooks.buildGo
+              hooks.buildGoCacheOutputSetupHook
+            ];
+          })
+        ) { };
+
         "github.com/alecthomas/kong" = callPackage (
           {
             stdenv,
@@ -69,6 +92,55 @@ let
             ];
           }
         ) { };
+
+        "github.com/fsnotify/fsnotify" = callPackage (
+          {
+            stdenv,
+            hooks,
+            fetchFromGitHub,
+            goPackages,
+
+          }:
+          let
+            sys = goPackages."golang.org/x/sys";
+          in
+          stdenv.mkDerivation {
+            pname = "github.com/fsnotify/fsnotify";
+            version = "1.8.0";
+
+            src = fetchFromGitHub {
+              owner = "fsnotify";
+              repo = "fsnotify";
+              rev = "v1.8.0";
+              hash = "sha256-+Rxg5q17VaqSU1xKPgurq90+Z1vzXwMLIBSe5UsyI/M=";
+            };
+
+            nativeBuildInputs = [
+              hooks.configureGoCache
+              hooks.buildGo
+              hooks.buildGoCacheOutputSetupHook
+            ];
+
+            buildInputs = [
+              sys
+            ];
+
+            # cp ${finalAttrs.src}/modules.txt vendor/modules.txt
+
+            # TODO: Move vendor setup to hook
+            preBuild = ''
+              mkdir -p vendor/golang.org/x
+              ln -s ${sys.src} vendor/golang.org/x/sys
+
+              cat > vendor/modules.txt<<EOF
+              # golang.org/x/sys v0.13.0
+              ## explicit; go 1.20
+              golang.org/x/sys
+              EOF
+
+            '';
+          }
+        ) { };
       }
     );
 
@@ -80,31 +152,63 @@ let
   };
 
 in
+{
 
-pkgs.stdenv.mkDerivation (finalAttrs: {
-  name = "simple-package";
-
-  src = ./fixtures/simple-package;
-
-  nativeBuildInputs =
+  fsnotify =
     let
-      inherit (goPackages) hooks;
+      base = goPackages."github.com/fsnotify/fsnotify";
     in
-    [
-      hooks.configureGoCache
-      hooks.buildGo
-      hooks.installGo
+    pkgs.stdenv.mkDerivation {
+      pname = "fsnotify";
+      inherit (base) version src;
+
+      preBuild =
+        base.preBuild
+        + ''
+          export NIX_GOCACHE_OUT=$(mktemp -d)
+        '';
+
+      buildInputs = [
+        base
+        goPackages."golang.org/x/sys"
+      ];
+
+      nativeBuildInputs =
+        let
+          inherit (goPackages) hooks;
+        in
+        [
+          hooks.configureGoCache
+          hooks.buildGo
+          hooks.installGo
+        ];
+    };
+
+  simple-package = pkgs.stdenv.mkDerivation (finalAttrs: {
+    name = "simple-package";
+
+    src = ./fixtures/simple-package;
+
+    nativeBuildInputs =
+      let
+        inherit (goPackages) hooks;
+      in
+      [
+        hooks.configureGoCache
+        hooks.buildGo
+        hooks.installGo
+      ];
+
+    buildInputs = [
+      goPackages."github.com/alecthomas/kong"
     ];
 
-  buildInputs = [
-    goPackages."github.com/alecthomas/kong"
-  ];
+    preBuild = ''
+      export NIX_GOCACHE_OUT=$(mktemp -d)
 
-  preBuild = ''
-    export NIX_GOCACHE_OUT=$(mktemp -d)
-
-    mkdir -p vendor/github.com/alecthomas
-    cp ${finalAttrs.src}/modules.txt vendor/modules.txt
-    ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
-  '';
-})
+      mkdir -p vendor/github.com/alecthomas
+      cp ${finalAttrs.src}/modules.txt vendor/modules.txt
+      ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
+    '';
+  });
+}
