@@ -12,19 +12,22 @@ let
     env.GOEXPERIMENT="cacheprog";
   });
 
-  hooks = pkgs.callPackages ./hooks { inherit go; };
+  hooks = pkgs.callPackages ./hooks {
+    inherit gobuild-nix-cacher;
+    inherit go;
+  };
 
-  cacher = stdenv.mkDerivation {
-    name = "gocache";
+  gobuild-nix-cacher = stdenv.mkDerivation {
+    name = "gobuild-nix-cacher";
     src = ./gobuild-nix-cacher;
     nativeBuildInputs = [
       hooks.buildGo
       hooks.installGo
     ];
-
     meta.mainProgram = "gobuild-nix-cacher";
   };
 
+  # Go package set containing build cache output & setup hooks for Go vendor
   goPackages = {
     # Contains build cache output
     "github.com/alecthomas/kong" = stdenv.mkDerivation {
@@ -39,22 +42,10 @@ let
       };
 
       nativeBuildInputs = [
+        hooks.configureGoCache
         hooks.buildGo
         hooks.buildGoCacheOutputSetupHook
       ];
-
-      env = {
-        GOEXPERIMENT="cacheprog";
-        GODEBUG="gocachetest=1";
-        GOCACHEPROG = lib.getExe cacher;
-        NIX_GOCACHE_VERBOSE = "1";
-      };
-
-      preBuild = ''
-        export NIX_GOCACHE_OUT="$out"
-      '';
-
-      dontInstall = true;
     };
   };
 
@@ -65,6 +56,7 @@ in
     src = ./fixtures/simple-package;
 
     nativeBuildInputs = [
+      hooks.configureGoCache
       hooks.buildGo
       hooks.installGo
     ];
@@ -72,13 +64,6 @@ in
     buildInputs = [
       goPackages."github.com/alecthomas/kong"
     ];
-
-    env = {
-      GOEXPERIMENT="cacheprog";
-      GODEBUG="gocachetest=1";
-      GOCACHEPROG = lib.getExe cacher;
-      NIX_GOCACHE_VERBOSE = "1";
-    };
 
     preBuild = ''
       export NIX_GOCACHE_OUT=$(mktemp -d)
