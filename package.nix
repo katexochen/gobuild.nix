@@ -35,7 +35,7 @@ in
         '';
 
       buildInputs = [
-        base
+        # base
         goPackages."golang.org/x/sys"
       ];
 
@@ -73,7 +73,6 @@ in
       export NIX_GOCACHE_OUT=$(mktemp -d)
 
       mkdir -p vendor/github.com/alecthomas
-      cp ${finalAttrs.src}/modules.txt vendor/modules.txt
       ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
     '';
   });
