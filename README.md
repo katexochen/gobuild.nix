@@ -14,8 +14,9 @@ Early, not fully baked.
 This wastes bandwidth, storage space & build time.
 
 By using [`GOCACHEPROG`](https://github.com/golang/go/issues/59719) we can achieve per-package granular builds.
+This has the potential to significantly cut down on build times.
 
-### Centralise patching
+## Adopting in nixpkgs
 
 If nixpkgs were to adopt this as it's Go builders, it would imply creating a Go package set.
 This has many benefits, but also some challenges.
@@ -27,10 +28,16 @@ Because `buildGoModule` has no insight into the dependency graph it has no actua
 
 By having only one centrally managed version of a dependency it's easier to ensure we don't ship known vulnerable code.
 
-- Improved compatibility posture
+- Improved composability posture
 
 The "fix" for packages that fail after a compiler version bump is often to pin that package to use an older compiler.
 Having a central set which we can patch could make many older compiler pins unnecessary.
+
+- Challenges
+  - Tooling would have to be created to keep the set up to date automatically depending on what leaf packages need.
+  - It's a dramatic shift away from how `buildGoModule` works
+  - Each package needs to record it's build inputs, now they're all grouped into a single hash
+  - Much more
 
 ## TODO
 
