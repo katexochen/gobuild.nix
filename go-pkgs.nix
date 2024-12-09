@@ -15,6 +15,55 @@ lib.makeScope newScope (
 
     goPackages = final;
 
+    # Fetch source of a Go package from Go proxy.
+    fetchFromGoProxy = callPackage (
+      { runCommandNoCC, go }:
+      {
+        pname,
+        version,
+        hash,
+      }:
+      runCommandNoCC "goproxy-${pname}-${version}"
+        {
+          buildInputs = [ go ];
+          outputHashMode = "recursive";
+          outputHashAlgo = "sha256";
+          outputHash = hash;
+        }
+        ''
+          export HOME=$TMPDIR
+          export GOMODCACHE=$out
+          export GOPROXY=https://proxy.golang.org
+          go mod download ${pname}@v${version}
+        ''
+    ) { };
+
+    # Build a Go package that was fetched with fetchFromGoProxy.
+    mkGoModule = callPackage (
+      {
+        stdenv,
+        fetchFromGoProxy,
+        hooks,
+      }:
+      {
+        pname,
+        version,
+        hash,
+      }:
+      stdenv.mkDerivation {
+        inherit pname version;
+        src = fetchFromGoProxy { inherit pname version hash; };
+        nativeBuildInputs = [
+          hooks.configureGoCache
+          hooks.buildGo
+          hooks.buildGoCacheOutputSetupHook
+        ];
+        preBuild = ''
+          cd ${pname}@v${version}
+        '';
+      }
+    ) { };
+
     gobuild-nix-cacher = callPackage (
       { stdenv, hooks }:
       stdenv.mkDerivation {
@@ -33,51 +82,20 @@ lib.makeScope newScope (
     # Packages
 
     "golang.org/x/sys" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
+      { mkGoModule }:
+      mkGoModule {
         pname = "golang.org/x/sys";
-        version = "0.27.0";
-
-        src = fetchgit {
-          url = "https://go.googlesource.com/sys";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-+d5AljNfSrDuYxk3qCRw4dHkYVELudXJEh6aN8BYPhM=";
-        };
-
-        nativeBuildInputs = [
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-        ];
-      })
+        version = "0.13.0";
+        hash = "sha256-/Cyl95zOvu+1/z1UTWcKJDyL/VcbP74/czL2DT+G9wA=";
+      }
     ) { };
 
     "github.com/alecthomas/kong" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchFromGitHub,
-      }:
-      stdenv.mkDerivation {
+      { mkGoModule }:
+      mkGoModule {
         pname = "github.com/alecthomas/kong";
         version = "1.4.0";
-
-        src = fetchFromGitHub {
-          owner = "alecthomas";
-          repo = "kong";
-          rev = "v1.4.0";
-          hash = "sha256-xfjPNqMa5Qtah4vuSy3n0Zn/G7mtufKlOiTzUemzFcQ=";
-        };
-
-        nativeBuildInputs = [
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-        ];
+        hash = "sha256-UT1vOjMHpga1y2ZoLpb3OmncXSWUcfoULrdSvjnoB40=";
       }
     ) { };
 
@@ -113,19 +131,10 @@ lib.makeScope newScope (
           sys
         ];
 
-        # cp ${finalAttrs.src}/modules.txt vendor/modules.txt
-
-        # TODO: Move vendor setup to hook
+        # Automatically set GOPROXY via hook.
+        # Override versions in go.mod files.
         preBuild = ''
-          mkdir -p vendor/golang.org/x
-          ln -s ${sys.src} vendor/golang.org/x/sys
-
-          cat > vendor/modules.txt<<EOF
-          # golang.org/x/sys v0.13.0
-          ## explicit; go 1.20
-          golang.org/x/sys
-          EOF
-
+          export GOPROXY=file://${sys.src}/cache/download
         '';
       }
     ) { };
