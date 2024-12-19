@@ -85,8 +85,8 @@ lib.makeScope newScope (
       { mkGoModule }:
       mkGoModule {
         pname = "golang.org/x/sys";
-        version = "0.13.0";
-        hash = "sha256-/Cyl95zOvu+1/z1UTWcKJDyL/VcbP74/czL2DT+G9wA=";
+        version = "0.27.0";
+        hash = "sha256-DbcRkDeTPyapsS+sZCY+j1AEWm0pyFkK8VmbdudYeeA=";
       }
     ) { };
 
@@ -125,6 +125,7 @@ lib.makeScope newScope (
           hooks.configureGoCache
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
+          go
         ];
 
         buildInputs = [
@@ -135,6 +136,12 @@ lib.makeScope newScope (
         # Override versions in go.mod files.
         preBuild = ''
           export GOPROXY=file://${sys.src}/cache/download
+          export GOSUMDB=off
+
+          # Override versions in go.mod files.
+          export HOME=$TMPDIR
+          go mod edit -replace=${sys.pname}=${sys.pname}@v${sys.version}
+          go mod tidy
         '';
       }
     ) { };
