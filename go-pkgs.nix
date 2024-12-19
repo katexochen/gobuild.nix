@@ -57,6 +57,7 @@ lib.makeScope newScope (
           hooks.configureGoCache
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
+          hooks.buildGoVendorOutputSetupHook
         ];
         preBuild = ''
           cd ${pname}@v${version}
@@ -95,7 +96,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/alecthomas/kong";
         version = "1.4.0";
-        hash = "sha256-UT1vOjMHpga1y2ZoLpb3OmncXSWUcfoULrdSvjnoB40=";
+        hash = "sha256-eV2AIiR0exPixzCPwUiSEDeyxR2yQyVz8Gou8GuPEN0=";
       }
     ) { };
 
@@ -122,27 +123,15 @@ lib.makeScope newScope (
         };
 
         nativeBuildInputs = [
+          hooks.configureGoVendor
           hooks.configureGoCache
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
-          go
         ];
 
         buildInputs = [
           sys
         ];
-
-        # Automatically set GOPROXY via hook.
-        # Override versions in go.mod files.
-        preBuild = ''
-          export GOPROXY=file://${sys.src}/cache/download
-          export GOSUMDB=off
-
-          # Override versions in go.mod files.
-          export HOME=$TMPDIR
-          go mod edit -replace=${sys.pname}=${sys.pname}@v${sys.version}
-          go mod tidy
-        '';
       }
     ) { };
   }
