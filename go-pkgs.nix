@@ -89,9 +89,6 @@ lib.makeScope newScope (
         goPackages,
 
       }:
-      let
-        sys = goPackages."golang.org/x/sys";
-      in
       stdenv.mkDerivation {
         pname = "github.com/fsnotify/fsnotify";
         version = "1.8.0";
@@ -104,29 +101,15 @@ lib.makeScope newScope (
         };
 
         nativeBuildInputs = [
+          hooks.configureGoVendor
           hooks.configureGoCache
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
         ];
 
         buildInputs = [
-          sys
+          goPackages."golang.org/x/sys"
         ];
-
-        # cp ${finalAttrs.src}/modules.txt vendor/modules.txt
-
-        # TODO: Move vendor setup to hook
-        preBuild = ''
-          mkdir -p vendor/golang.org/x
-          ln -s ${sys.src} vendor/golang.org/x/sys
-
-          cat > vendor/modules.txt<<EOF
-          # golang.org/x/sys v0.13.0
-          ## explicit; go 1.20
-          golang.org/x/sys
-          EOF
-
-        '';
       }
     ) { };
   }
