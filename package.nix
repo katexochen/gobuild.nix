@@ -61,6 +61,7 @@ in
         inherit (goPackages) hooks;
       in
       [
+        hooks.configureGoVendor
         hooks.configureGoCache
         hooks.buildGo
         hooks.installGo
@@ -69,9 +70,5 @@ in
     buildInputs = [
       goPackages."github.com/alecthomas/kong"
     ];
-
-    preBuild = ''
-      export GOPROXY=file:///${goPackages."github.com/alecthomas/kong".src}/cache/download
-    '';
   });
 }
