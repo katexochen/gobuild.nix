@@ -108,9 +108,6 @@ lib.makeScope newScope (
         goPackages,
 
       }:
-      let
-        sys = goPackages."golang.org/x/sys";
-      in
       stdenv.mkDerivation {
         pname = "github.com/fsnotify/fsnotify";
         version = "1.8.0";
@@ -130,7 +127,7 @@ lib.makeScope newScope (
         ];
 
         buildInputs = [
-          sys
+          goPackages."golang.org/x/sys"
         ];
       }
     ) { };

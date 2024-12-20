@@ -29,15 +29,9 @@ in
       pname = "fsnotify";
       inherit (base) version src;
 
-      preBuild =
-        base.preBuild
-        + ''
-          export NIX_GOCACHE_OUT=$(mktemp -d)
-        '';
-
       buildInputs = [
-        # base
         goPackages."golang.org/x/sys"
+        base
       ];
 
       nativeBuildInputs =
@@ -45,6 +39,7 @@ in
           inherit (goPackages) hooks;
         in
         [
+          hooks.configureGoVendor
           hooks.configureGoCache
           hooks.buildGo
           hooks.installGo
