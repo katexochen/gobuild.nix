@@ -25,9 +25,18 @@ in
     let
       base = goPackages."github.com/fsnotify/fsnotify";
     in
-    pkgs.stdenv.mkDerivation {
+    pkgs.stdenv.mkDerivation rec {
       pname = "fsnotify";
       inherit (base) version src;
+
+      env.GOPROXY = "file://${
+        pkgs.symlinkJoin {
+          name = "go-proxy-for-${pname}";
+          paths = [
+            goPackages."golang.org/x/sys".src
+          ];
+        }
+      }/cache/download";
 
       buildInputs = [
         goPackages."golang.org/x/sys"
@@ -61,6 +70,18 @@ in
         hooks.buildGo
         hooks.installGo
       ];
+
+    env.GOPROXY = "file://${
+      pkgs.symlinkJoin {
+        name = "go-proxy-for-${finalAttrs.name}";
+        paths = [
+          goPackages."github.com/alecthomas/repr".src
+          goPackages."github.com/hexops/gotextdiff".src
+          goPackages."github.com/alecthomas/assert/v2".src
+          goPackages."github.com/alecthomas/kong".src
+        ];
+      }
+    }/cache/download";
 
     buildInputs = [
       goPackages."github.com/alecthomas/kong"

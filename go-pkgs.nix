@@ -49,17 +49,25 @@ lib.makeScope newScope (
         pname,
         version,
         hash,
+        buildInputs ? [ ],
+        env ? { },
       }:
       stdenv.mkDerivation {
-        inherit pname version;
+        inherit
+          pname
+          version
+          buildInputs
+          env
+          ;
         src = fetchFromGoProxy { inherit pname version hash; };
         nativeBuildInputs = [
+          hooks.configureGoVendor
           hooks.configureGoCache
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
           hooks.buildGoVendorOutputSetupHook
         ];
-        preBuild = ''
+        postPatch = ''
           cd ${pname}@v${version}
         '';
       }
@@ -91,12 +99,75 @@ lib.makeScope newScope (
       }
     ) { };
 
-    "github.com/alecthomas/kong" = callPackage (
+    "github.com/alecthomas/repr" = callPackage (
       { mkGoModule }:
       mkGoModule {
+        pname = "github.com/alecthomas/repr";
+        version = "0.4.0";
+        hash = "sha256-H5TjyrYaclxAa8C+TXIjrJOTxGGvm7DJtMTuonQRQdk=";
+      }
+    ) { };
+
+    "github.com/hexops/gotextdiff" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/hexops/gotextdiff";
+        version = "1.0.3";
+        hash = "sha256-c4Gvo7aWaQPTFb4N4iaw/7wxbZA0HMTXghAwwYyJtSM=";
+      }
+    ) { };
+
+    "github.com/alecthomas/assert/v2" = callPackage (
+      {
+        mkGoModule,
+        goPackages,
+        symlinkJoin,
+      }:
+      mkGoModule rec {
+        pname = "github.com/alecthomas/assert/v2";
+        version = "2.11.0";
+        hash = "sha256-OB2Y3u+q5n4Yx01NPEk9A8c9Qdb46yAWezkHQeW/WuM=";
+        env.GOPROXY = "file://${
+          symlinkJoin {
+            name = "go-proxy-for-${pname}";
+            paths = [
+              goPackages."github.com/alecthomas/repr".src
+              goPackages."github.com/hexops/gotextdiff".src
+            ];
+          }
+        }/cache/download";
+        buildInputs = [
+          goPackages."github.com/alecthomas/repr"
+          goPackages."github.com/hexops/gotextdiff"
+        ];
+      }
+    ) { };
+
+    "github.com/alecthomas/kong" = callPackage (
+      {
+        mkGoModule,
+        goPackages,
+        symlinkJoin,
+      }:
+      mkGoModule rec {
         pname = "github.com/alecthomas/kong";
         version = "1.4.0";
         hash = "sha256-eV2AIiR0exPixzCPwUiSEDeyxR2yQyVz8Gou8GuPEN0=";
+        env.GOPROXY = "file://${
+          symlinkJoin {
+            name = "go-proxy-for-${pname}";
+            paths = [
+              goPackages."github.com/alecthomas/repr".src
+              goPackages."github.com/hexops/gotextdiff".src
+              goPackages."github.com/alecthomas/assert/v2".src
+            ];
+          }
+        }/cache/download";
+        buildInputs = [
+          goPackages."github.com/alecthomas/repr"
+          goPackages."github.com/hexops/gotextdiff"
+          goPackages."github.com/alecthomas/assert/v2"
+        ];
       }
     ) { };
 
@@ -106,9 +177,9 @@ lib.makeScope newScope (
         hooks,
         fetchFromGitHub,
         goPackages,
-
+        symlinkJoin,
       }:
-      stdenv.mkDerivation {
+      stdenv.mkDerivation rec {
         pname = "github.com/fsnotify/fsnotify";
         version = "1.8.0";
 
@@ -125,6 +196,15 @@ lib.makeScope newScope (
           hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
         ];
+
+        env.GOPROXY = "file://${
+          symlinkJoin {
+            name = "go-proxy-for-${pname}";
+            paths = [
+              goPackages."golang.org/x/sys".src
+            ];
+          }
+        }/cache/download";
 
         buildInputs = [
           goPackages."golang.org/x/sys"
