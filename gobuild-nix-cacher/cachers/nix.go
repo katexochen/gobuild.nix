@@ -65,6 +65,10 @@ func (dc *DiskCache) Get(ctx context.Context, actionID string) (outputID, diskPa
 			return "", "", nil
 		}
 
+		if dc.Verbose {
+			log.Printf("disk hit in dir %v", dir)
+		}
+
 		return ie.OutputID, filepath.Join(dir, fmt.Sprintf("o-%v", ie.OutputID)), nil
 	}
 

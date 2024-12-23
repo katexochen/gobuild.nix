@@ -5,6 +5,7 @@ goBuildPhase() {
   runHook preBuild
 
   export GO_NO_VENDOR_CHECKS=1
+  # export GODEBUG=gocachehash=1
   export HOME=$(mktemp -d)
 
   @go@ build -v ./...
