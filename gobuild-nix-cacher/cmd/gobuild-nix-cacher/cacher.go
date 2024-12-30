@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bradfitz/go-tool-cache/cacheproc"
-	"github.com/bradfitz/go-tool-cache/cachers"
+	"github.com/adisbladis/gobuild.nix/gobuild-nix-cacher/cacheproc"
+	"github.com/adisbladis/gobuild.nix/gobuild-nix-cacher/cachers"
 )
 
 func main() {
