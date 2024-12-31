@@ -23,7 +23,7 @@ in
 
   fsnotify =
     let
-      base = goPackages."github.com/fsnotify/fsnotify";
+      base = goPackages."github.com/fsnotify/fsnotify@v1.8.0";
     in
     pkgs.stdenv.mkDerivation {
       pname = "fsnotify";
@@ -31,7 +31,7 @@ in
 
       buildInputs = [
         # base
-        goPackages."golang.org/x/sys"
+        goPackages."golang.org/x/sys@v0.13.0"
       ];
 
       nativeBuildInputs =
@@ -39,6 +39,7 @@ in
           inherit (goPackages) hooks;
         in
         [
+          hooks.configureGoVendor
           hooks.configureGoCache
           hooks.buildGo
           hooks.installGo
@@ -55,13 +56,14 @@ in
         inherit (goPackages) hooks;
       in
       [
+        hooks.configureGoVendor
         hooks.configureGoCache
         hooks.buildGo
         hooks.installGo
       ];
 
     buildInputs = [
-      goPackages."github.com/alecthomas/kong"
+      goPackages."github.com/alecthomas/kong@v1.4.0"
     ];
   });
 }
