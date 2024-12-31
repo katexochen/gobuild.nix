@@ -29,12 +29,6 @@ in
       pname = "fsnotify";
       inherit (base) version src;
 
-      preBuild =
-        base.preBuild
-        + ''
-          export NIX_GOCACHE_OUT=$(mktemp -d)
-        '';
-
       buildInputs = [
         # base
         goPackages."golang.org/x/sys"
@@ -69,13 +63,5 @@ in
     buildInputs = [
       goPackages."github.com/alecthomas/kong"
     ];
-
-    preBuild = ''
-      export NIX_GOCACHE_OUT=$(mktemp -d)
-
-      mkdir -p vendor/github.com/alecthomas
-      cp modules.txt vendor
-      ln -s ${goPackages."github.com/alecthomas/kong".src} vendor/github.com/alecthomas/kong
-    '';
   });
 }
