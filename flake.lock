@@ -2,16 +2,16 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1731319897,
-        "narHash": "sha256-PbABj4tnbWFMfBp6OcUK5iGy1QY+/Z96ZcLpooIbuEI=",
-        "owner": "nixos",
+        "lastModified": 1736427005,
+        "narHash": "sha256-6p6goIHf1oLTV6Up0zvXcOblCshn0prqQZcqG5XDPwg=",
+        "owner": "katexochen",
         "repo": "nixpkgs",
-        "rev": "dc460ec76cbff0e66e269457d7b728432263166c",
+        "rev": "e4804ab86a203f72aa3a11553fd0ce4584c0fcf5",
         "type": "github"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixos-unstable",
+        "owner": "katexochen",
+        "ref": "go/modules-txt-patch",
         "repo": "nixpkgs",
         "type": "github"
       }
