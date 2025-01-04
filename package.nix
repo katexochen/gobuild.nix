@@ -23,7 +23,7 @@ in
 
   fsnotify =
     let
-      base = goPackages."github.com/fsnotify/fsnotify@v1.8.0";
+      base = goPackages."github.com/fsnotify/fsnotify";
     in
     pkgs.stdenv.mkDerivation {
       pname = "fsnotify";
@@ -31,7 +31,7 @@ in
 
       buildInputs = [
         # base
-        goPackages."golang.org/x/sys@v0.13.0"
+        goPackages."golang.org/x/sys"
       ];
 
       nativeBuildInputs =
@@ -63,7 +63,7 @@ in
       ];
 
     buildInputs = [
-      goPackages."github.com/alecthomas/kong@v1.4.0"
+      goPackages."github.com/alecthomas/kong"
     ];
   });
 }

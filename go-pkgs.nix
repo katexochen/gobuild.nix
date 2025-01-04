@@ -32,7 +32,7 @@ lib.makeScope newScope (
 
     # Packages
 
-    "golang.org/x/sys@v0.27.0" = callPackage (
+    "golang.org/x/sys" = callPackage (
       {
         stdenv,
         hooks,
@@ -57,32 +57,7 @@ lib.makeScope newScope (
       })
     ) { };
 
-    "golang.org/x/sys@v0.13.0" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/sys";
-        version = "0.13.0";
-
-        src = fetchgit {
-          url = "https://go.googlesource.com/sys";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-GLmTiL1Geuk+OuIdY++e5rzXpa6WMVgZ2D3cl/VBypA=";
-        };
-
-        nativeBuildInputs = [
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
-        ];
-      })
-    ) { };
-
-    "github.com/alecthomas/kong@v1.4.0" = callPackage (
+    "github.com/alecthomas/kong" = callPackage (
       {
         stdenv,
         hooks,
@@ -108,7 +83,7 @@ lib.makeScope newScope (
       }
     ) { };
 
-    "github.com/fsnotify/fsnotify@v1.8.0" = callPackage (
+    "github.com/fsnotify/fsnotify" = callPackage (
       {
         stdenv,
         hooks,
@@ -136,7 +111,7 @@ lib.makeScope newScope (
         ];
 
         buildInputs = [
-          goPackages."golang.org/x/sys@v0.13.0"
+          goPackages."golang.org/x/sys"
         ];
       }
     ) { };
