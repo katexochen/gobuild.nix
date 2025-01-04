@@ -23,11 +23,6 @@ goConfigureVendor() {
     mkdir -p "vendor/${pname%/*}"
     ln -s "${storepath}" vendor/${pname}
 
-    cat >> vendor/modules.txt << EOF
-# ${pname} v${version}
-## explicit; ${goDirective}
-${pname}
-EOF
   done < <(tr ':' '\n' <<< "${NIX_GO_VENDOR}")
 
   echo "Finished executing goConfigureVendor"
