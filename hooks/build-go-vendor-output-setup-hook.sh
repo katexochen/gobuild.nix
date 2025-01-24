@@ -1,7 +1,7 @@
 goVendorOutputSetupHook() {
   mkdir -p "$out/nix-support"
   cat >>"$out/nix-support/setup-hook" <<EOF
-appendToVar NIX_GO_VENDOR "${src}/${pname}@v${version}"
+appendToVar NIX_GO_VENDOR "${pname}@v${version}:${src}"
 EOF
 }
 

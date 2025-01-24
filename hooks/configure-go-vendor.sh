@@ -10,14 +10,13 @@ goConfigureVendor() {
   fi
 
   for dep in ${NIX_GO_VENDOR}; do
-    # Input form is /nix/store/<storepath>/<pname>@v<version>
-    local storepath=${dep%/*/*/*}
-    local withoutNixStore="${dep#/nix/store/}"
-    local withoutStorepath="${withoutNixStore#*/}"
-    local pname="${withoutStorepath%%@v*}"
-    local version="${withoutStorepath##*@v}"
+    # Input form is <pname>@v<version>:<storepath>
+    local storepath="${dep#*:}"
+    local pname="${dep%%@v*}"
+    local version="${dep##*@}"
+    version="${version%%:*}"
 
-    echo "adding ${pname}@${version} to vendor"
+    echo "adding ${pname}@${version} to vendor, storepath: ${storepath}"
 
     mkdir -p "vendor/${pname%/*}"
     ln -s "${storepath}" vendor/${pname}
