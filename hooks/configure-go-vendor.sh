@@ -9,21 +9,19 @@ goConfigureVendor() {
     return
   fi
 
-  while read -r dep; do
+  for dep in ${NIX_GO_VENDOR}; do
     # Input form is /nix/store/<storepath>/<pname>@v<version>
     local storepath=${dep%/*/*/*}
     local withoutNixStore="${dep#/nix/store/}"
     local withoutStorepath="${withoutNixStore#*/}"
     local pname="${withoutStorepath%%@v*}"
     local version="${withoutStorepath##*@v}"
-    goDirective=$(grep -E '^go [0-9]+[.][0-9]+([.][0-9]+)?$' "${storepath}/go.mod" || true)
 
     echo "adding ${pname}@${version} to vendor"
 
     mkdir -p "vendor/${pname%/*}"
     ln -s "${storepath}" vendor/${pname}
-
-  done < <(tr ':' '\n' <<< "${NIX_GO_VENDOR}")
+  done
 
   echo "Finished executing goConfigureVendor"
 }
