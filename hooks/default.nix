@@ -28,6 +28,7 @@ in
       name = "configure-go-vendor-hook";
       substitutions = {
         go = goExe;
+        go_version = go.version;
       };
     } ./configure-go-vendor.sh
   ) { };
