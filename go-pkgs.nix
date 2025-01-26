@@ -63,148 +63,192 @@ lib.makeScope newScope (
           hooks.buildGoVendorOutputSetupHook
         ];
         inherit buildInputs;
+        dontInstall = true;
       })
+    ) { };
+
+    goVendorSrc = callPackage (
+      { runCommand, findutils }:
+      {
+        src,
+        ...
+      }@args:
+      runCommand (src.name or "source")
+        {
+          nativeBuildInputs = [ findutils ];
+          version = args.version or src.rev;
+        }
+        ''
+          cp -r ${src} $out
+          chmod +w -R $out
+
+          # Remove submodules from vendored sources
+          find $out \
+            -mindepth 2 \
+            -type f \
+            -name go.mod \
+            -printf '%h\n' \
+            | xargs rm -rf
+        ''
     ) { };
 
     # Packages
 
-    "golang.org/x/sys" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/sys";
-        version = "0.27.0";
-        src = fetchgit {
-          url = "https://go.googlesource.com/sys";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-+d5AljNfSrDuYxk3qCRw4dHkYVELudXJEh6aN8BYPhM=";
-        };
-        nativeBuildInputs = [
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
-        ];
-      })
-    ) { };
-    "golang.org/x/tools" = callPackage (
+    "_golang.org/x" = callPackage (
       {
         stdenv,
         hooks,
         fetchgit,
         goPackages,
+        goVendorSrc,
       }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/tools";
-        version = "0.29.0";
-        src = fetchgit {
-          url = "https://go.googlesource.com/tools";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-h3UjRY1w0AyONADNiLhxXt9/z7Tb/40FJI8rKGXpBeM=";
+      let
+        srcs = {
+          "golang.org/x/crypto" = fetchgit {
+            name = "crypto";
+            url = "https://go.googlesource.com/crypto";
+            rev = "v0.32.0";
+            hash = "sha256-LLt6IXv4jY3VRjnOT2Yw7Ca0oWCI3P49HDj2Fz887eI=";
+          };
+          "golang.org/x/exp" = goVendorSrc {
+            src = fetchgit {
+              name = "exp";
+              url = "https://go.googlesource.com/exp";
+              rev = "7588d65b2ba8549413779549f949cd7a5ccb1320";
+              hash = "sha256-N1qhhNbR6N2RrZqMMLcBUYnF6M3pm8bqGJbp8E25kPA=";
+            };
+            version = "v0.0.0-20250106191152-7588d65b2ba8";
+          };
+          "golang.org/x/mod" = fetchgit {
+            name = "mod";
+            url = "https://go.googlesource.com/mod";
+            rev = "v0.22.0";
+            hash = "sha256-skiXXiDrO33eRHofDPJTFxnYNtsirJaoTpyeCvlrDco=";
+          };
+          "golang.org/x/net" = fetchgit {
+            name = "net";
+            url = "https://go.googlesource.com/net";
+            rev = "v0.34.0";
+            hash = "sha256-AZOLY4MUNxxDw5ZQtO9dmY/YRo1gFW87YvpX/eLTy4Q=";
+          };
+          "golang.org/x/sync" = fetchgit {
+            name = "sync";
+            url = "https://go.googlesource.com/sync";
+            rev = "v0.10.0";
+            hash = "sha256-HWruKClrdoBKVdxKCyoazxeQV4dIYLdkHekQvx275/o=";
+          };
+          "golang.org/x/sys" = fetchgit {
+            name = "sys";
+            url = "https://go.googlesource.com/sys";
+            rev = "v0.29.0";
+            hash = "sha256-TGDwlVIdOHHJevpXiH5XrE6nFBVOE+beixd+wcdZeBw=";
+          };
+          "golang.org/x/telemetry" = goVendorSrc {
+            src = fetchgit {
+              name = "telemetry";
+              url = "https://go.googlesource.com/telemetry";
+              rev = "04cd7bae618c3a771d5b69e5134b51345830b696";
+              hash = "sha256-mXsCGO/W6HCZOqWNjjosu5zy77y4Siq4SQYrL/je0tY=";
+            };
+            version = "v0.0.0-20250117155846-04cd7bae618c";
+          };
+          "golang.org/x/term" = fetchgit {
+            name = "term";
+            url = "https://go.googlesource.com/term";
+            rev = "v0.28.0";
+            hash = "sha256-1/iWqndBRFgDL+/tVokkaGHpO/jdyjZ0dN2YWuBdiXQ=";
+          };
+          "golang.org/x/text" = fetchgit {
+            name = "text";
+            url = "https://go.googlesource.com/text";
+            rev = "v0.21.0";
+            hash = "sha256-m8LVnzj+VeclJflfgO7UcOSYSS052RvRgyjTXCgK8As=";
+          };
+          "golang.org/x/time" = fetchgit {
+            name = "time";
+            url = "https://go.googlesource.com/time";
+            rev = "v0.9.0";
+            hash = "sha256-ipaWVIk1+DZg0rfCzBSkz/Y6DEnB7xkX2RRYycHkhC0=";
+          };
+          "golang.org/x/tools" = goVendorSrc {
+            src = fetchgit {
+              name = "tools";
+              url = "https://go.googlesource.com/tools";
+              rev = "v0.29.0";
+              hash = "sha256-h3UjRY1w0AyONADNiLhxXt9/z7Tb/40FJI8rKGXpBeM=";
+            };
+          };
+          "golang.org/x/xerrors" = goVendorSrc {
+            src = fetchgit {
+              name = "xerrors";
+              url = "https://go.googlesource.com/xerrors";
+              rev = "a985d3407aa71f30cf86696ee0a2f409709f22e1";
+              hash = "sha256-kj2qs47n+a4gtKXHJN3U9gcSQ3BozjzYu7EphXjJnwM=";
+            };
+            version = "v0.0.0-20190717185122-a985d3407aa7";
+          };
         };
+      in
+      stdenv.mkDerivation (finalAttrs: {
+        name = "golang.org/x";
+
+        unpackPhase = ''
+          runHook preUnpack
+
+          mkdir -p workdir
+          cd workdir
+          go mod init golang-org-x-combined
+
+          runHook postUnpack
+        '';
+
+        env.NIX_GO_VENDOR = lib.pipe srcs [
+          (lib.mapAttrsToList (pname: src: "${pname}@${src.version or src.rev}:${src}"))
+          (lib.concatStringsSep " ")
+        ];
+
         nativeBuildInputs = [
           hooks.configureGoVendor
           hooks.configureGoCache
-          hooks.buildGo
           hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
+          goPackages.go
         ];
+
         buildInputs = [
-          goPackages."golang.org/x/sys"
+          goPackages."github.com/google/go-cmdtest"
           goPackages."github.com/google/go-cmp"
+          goPackages."github.com/google/renameio"
           goPackages."github.com/yuin/goldmark"
-          goPackages."golang.org/x/mod"
-          goPackages."golang.org/x/net"
-          goPackages."golang.org/x/sync"
-          goPackages."golang.org/x/telemetry"
         ];
-      })
-    ) { };
-    "golang.org/x/mod" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/mod";
-        version = "0.22.0";
-        src = fetchgit {
-          url = "https://go.googlesource.com/mod";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-skiXXiDrO33eRHofDPJTFxnYNtsirJaoTpyeCvlrDco=";
+
+        buildPhase =
+          ''
+            runHook preBuild
+
+            export GO_NO_VENDOR_CHECKS=1
+            export HOME=$(mktemp -d)
+            mkdir -p "$out/nix-support"
+          ''
+          + (lib.pipe srcs [
+            (lib.mapAttrsToList (
+              pname: src: ''
+                echo "Building ${pname}/..."
+                go build ${pname}/...
+
+                cat >>"$out/nix-support/setup-hook" <<EOF
+                appendToVar NIX_GO_VENDOR "${pname}@${src.version or src.rev}:${src}"
+                EOF
+              ''
+            ))
+            (lib.concatStringsSep "\n")
+          ])
+          + ''
+            runHook postBuild
+          '';
+
+        passthru = {
+          inherit srcs;
         };
-        nativeBuildInputs = [
-          hooks.configureGoVendor
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
-        ];
-        # Required according to go.mod.
-        # buildInputs = [
-        #   goPackages."golang.org/x/tools"
-        # ];
-      })
-    ) { };
-    "golang.org/x/net" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-        goPackages,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/mod";
-        version = "0.34.0";
-        src = fetchgit {
-          url = "https://go.googlesource.com/net";
-          rev = "v${finalAttrs.version}";
-          hash = "";
-        };
-        nativeBuildInputs = [
-          hooks.configureGoVendor
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
-        ];
-        buildInputs = [
-          goPackages."golang.org/x/crypto"
-          goPackages."golang.org/x/sys"
-          goPackages."golang.org/x/term"
-          goPackages."golang.org/x/text"
-        ];
-      })
-    ) { };
-    "golang.org/x/text" = callPackage (
-      {
-        stdenv,
-        hooks,
-        fetchgit,
-        goPackages,
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        pname = "golang.org/x/text";
-        version = "0.21.0";
-        src = fetchgit {
-          url = "https://go.googlesource.com/text";
-          rev = "v${finalAttrs.version}";
-          hash = "sha256-m8LVnzj+VeclJflfgO7UcOSYSS052RvRgyjTXCgK8As=";
-        };
-        nativeBuildInputs = [
-          hooks.configureGoVendor
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
-        ];
-        buildInputs = [
-          # goPackages."golang.org/x/tools" # Infinitely recursive.
-        ];
       })
     ) { };
 
@@ -291,13 +335,18 @@ lib.makeScope newScope (
       }
     ) { };
     "github.com/coreos/go-systemd/v22" = callPackage (
-      { mkGoModule, goPackages }:
+      {
+        mkGoModule,
+        goPackages,
+        systemdLibs,
+      }:
       mkGoModule {
         pname = "github.com/coreos/go-systemd/v22";
         version = "22.5.0";
         hash = "sha256-ztvSLbLaKUe/pNIzKhjkVhKOdk8C9Xwr6jZxizgjC+4=";
         buildInputs = [
           goPackages."github.com/godbus/dbus/v5"
+          systemdLibs
         ];
       }
     ) { };
@@ -358,6 +407,34 @@ lib.makeScope newScope (
         pname = "github.com/yuin/goldmark";
         version = "1.7.8";
         hash = "sha256-XXpz9CkA51e2HKWwOgiyqURBUKZIqcVmQ73HhmHo58c=";
+      }
+    ) { };
+    "github.com/google/go-cmdtest" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/google/go-cmdtest";
+        version = "0.3.0";
+        hash = "sha256-l+aQ89PkKWUWhcZw2GaaAV6ZOdwD/vTUSxJ9sPVP0+8=";
+        buildInputs = [
+          goPackages."github.com/google/go-cmp"
+          goPackages."github.com/google/renameio"
+        ];
+      }
+    ) { };
+    "github.com/google/renameio" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/google/renameio";
+        version = "1.0.1";
+        hash = "sha256-RS3xKcImH4gP5c02aEzf3cIlo1kmkUge9rjbpLIlyOI=";
+      }
+    ) { };
+    "" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "";
+        version = "";
+        hash = "";
       }
     ) { };
   }
