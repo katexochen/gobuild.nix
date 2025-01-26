@@ -2,7 +2,7 @@
   description = "A very basic flake";
 
   inputs = {
-    nixpkgs.url = "github:katexochen/nixpkgs?ref=go/modules-txt-patch";
+    nixpkgs.url = "github:katexochen/nixpkgs?ref=mp/go-fix-vendor-load";
   };
 
   outputs =

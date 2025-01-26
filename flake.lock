@@ -2,16 +2,16 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1736427005,
-        "narHash": "sha256-6p6goIHf1oLTV6Up0zvXcOblCshn0prqQZcqG5XDPwg=",
+        "lastModified": 1737821574,
+        "narHash": "sha256-qr8ljRmEhHjModXYxyV022g66WgICAJw+EBHSTdekoI=",
         "owner": "katexochen",
         "repo": "nixpkgs",
-        "rev": "e4804ab86a203f72aa3a11553fd0ce4584c0fcf5",
+        "rev": "04b5a31e9709da580a910d87bc6c759c68d5038c",
         "type": "github"
       },
       "original": {
         "owner": "katexochen",
-        "ref": "go/modules-txt-patch",
+        "ref": "mp/go-fix-vendor-load",
         "repo": "nixpkgs",
         "type": "github"
       }
