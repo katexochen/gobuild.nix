@@ -210,7 +210,6 @@ lib.makeScope newScope (
         nativeBuildInputs = [
           hooks.configureGoVendor
           hooks.configureGoCache
-          hooks.buildGoCacheOutputSetupHook
           goPackages.go
         ];
 
@@ -246,11 +245,44 @@ lib.makeScope newScope (
             runHook postBuild
           '';
 
-        passthru = {
-          inherit srcs;
-        };
+        passthru = lib.mapAttrs' (
+          name: src:
+          (lib.nameValuePair src.name (
+            stdenv.mkDerivation {
+              pname = name;
+              version = lib.removePrefix "v" (src.version or src.rev);
+              inherit src;
+              nativeBuildInputs = [
+                hooks.buildGoCacheOutputSetupHook
+                hooks.buildGoVendorOutputSetupHook
+              ];
+              buildPhase = ''
+                runHook preBuild
+
+                mkdir -p $out
+                cp -r ${goPackages."_golang.org/x"}/* $out/
+
+                runHook postBuild
+              '';
+              dontInstall = true;
+            }
+          ))
+        ) srcs;
       })
     ) { };
+    # TODO: only include propagatedBuildInputs that are actually required for the packages.
+    "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/exp" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/mod" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/net" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/sys" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/sync" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/telemetry" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/term" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/time" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/xerrors" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
 
     "github.com/alecthomas/kong" = callPackage (
       { mkGoModule }:
