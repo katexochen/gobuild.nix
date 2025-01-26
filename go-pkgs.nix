@@ -210,7 +210,6 @@ lib.makeScope newScope (
         nativeBuildInputs = [
           hooks.configureGoVendor
           hooks.configureGoCache
-          hooks.buildGoCacheOutputSetupHook
           goPackages.go
         ];
 
@@ -243,8 +242,45 @@ lib.makeScope newScope (
           + ''
             runHook postBuild
           '';
+
+        passthru = lib.mapAttrs' (
+          name: src:
+          (lib.nameValuePair src.name (
+            stdenv.mkDerivation {
+              pname = name;
+              version = lib.removePrefix "v" (src.version or src.rev);
+              inherit src;
+              nativeBuildInputs = [
+                hooks.buildGoCacheOutputSetupHook
+                hooks.buildGoVendorOutputSetupHook
+              ];
+              buildPhase = ''
+                runHook preBuild
+
+                mkdir -p $out
+                cp -r ${goPackages."_golang.org/x"}/* $out/
+
+                runHook postBuild
+              '';
+              dontInstall = true;
+            }
+          ))
+        ) srcs;
       })
     ) { };
+    "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x".crypto) { };
+    "golang.org/x/exp" = callPackage ({ goPackages }: goPackages."_golang.org/x".exp) { };
+    "golang.org/x/mod" = callPackage ({ goPackages }: goPackages."_golang.org/x".mod) { };
+    "golang.org/x/net" = callPackage ({ goPackages }: goPackages."_golang.org/x".net) { };
+    # sys has no dependencies, can be removed from x set.
+    "golang.org/x/sys" = callPackage ({ goPackages }: goPackages."_golang.org/x".sys) { };
+    "golang.org/x/sync" = callPackage ({ goPackages }: goPackages."_golang.org/x".sync) { };
+    "golang.org/x/telemetry" = callPackage ({ goPackages }: goPackages."_golang.org/x".telemetry) { };
+    "golang.org/x/term" = callPackage ({ goPackages }: goPackages."_golang.org/x".term) { };
+    "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x".text) { };
+    "golang.org/x/time" = callPackage ({ goPackages }: goPackages."_golang.org/x".time) { };
+    "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x".tools) { };
+    "golang.org/x/xerrors" = callPackage ({ goPackages }: goPackages."_golang.org/x".xerrors) { };
 
     "github.com/alecthomas/kong" = callPackage (
       { mkGoModule }:
