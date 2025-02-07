@@ -250,19 +250,19 @@ lib.makeScope newScope (
         };
       })
     ) { };
-    "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x".crypto) { };
-    "golang.org/x/exp" = callPackage ({ goPackages }: goPackages."_golang.org/x".exp) { };
-    "golang.org/x/mod" = callPackage ({ goPackages }: goPackages."_golang.org/x".mod) { };
-    "golang.org/x/net" = callPackage ({ goPackages }: goPackages."_golang.org/x".net) { };
-    # sys has no dependencies, can be removed from x set.
-    "golang.org/x/sys" = callPackage ({ goPackages }: goPackages."_golang.org/x".sys) { };
-    "golang.org/x/sync" = callPackage ({ goPackages }: goPackages."_golang.org/x".sync) { };
-    "golang.org/x/telemetry" = callPackage ({ goPackages }: goPackages."_golang.org/x".telemetry) { };
-    "golang.org/x/term" = callPackage ({ goPackages }: goPackages."_golang.org/x".term) { };
-    "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x".text) { };
-    "golang.org/x/time" = callPackage ({ goPackages }: goPackages."_golang.org/x".time) { };
-    "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x".tools) { };
-    "golang.org/x/xerrors" = callPackage ({ goPackages }: goPackages."_golang.org/x".xerrors) { };
+    # TODO: only include propagatedBuildInputs that are actually required for the packages.
+    "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/exp" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/mod" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/net" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/sys" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/sync" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/telemetry" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/term" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/time" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
+    "golang.org/x/xerrors" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
 
     "github.com/alecthomas/kong" = callPackage (
       { mkGoModule }:
