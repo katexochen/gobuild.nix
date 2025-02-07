@@ -62,7 +62,7 @@ lib.makeScope newScope (
           hooks.buildGoCacheOutputSetupHook
           hooks.buildGoVendorOutputSetupHook
         ];
-        inherit buildInputs;
+        propagatedBuildInputs = buildInputs;
         dontInstall = true;
       })
     ) { };
@@ -213,7 +213,7 @@ lib.makeScope newScope (
           goPackages.go
         ];
 
-        buildInputs = [
+        propagatedBuildInputs = [
           goPackages."github.com/google/go-cmdtest"
           goPackages."github.com/google/go-cmp"
           goPackages."github.com/google/renameio"
