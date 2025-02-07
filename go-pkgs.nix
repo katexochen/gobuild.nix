@@ -43,29 +43,43 @@ lib.makeScope newScope (
         version,
         rev ? null,
         buildInputs ? [ ],
-      }:
-      stdenv.mkDerivation (finalAttrs: {
-        inherit pname version;
-        src =
-          let
-            owner-repo = lib.splitString "/" (lib.removePrefix "github.com/" pname);
-            owner = builtins.elemAt owner-repo 0;
-            repo = builtins.elemAt owner-repo 1;
-          in
-          fetchFromGitHub {
-            inherit owner repo hash;
-            rev = if rev != null then rev else "v${finalAttrs.version}";
-          };
-        nativeBuildInputs = [
-          hooks.configureGoVendor
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.buildGoCacheOutputSetupHook
-          hooks.buildGoVendorOutputSetupHook
+        nativeBuildInputs ? [ ],
+        ...
+      }@args:
+      let
+        args' = lib.removeAttrs args [
+          "hash"
+          "rev"
+          "buildInputs"
+          "nativeBuildInputs"
         ];
-        propagatedBuildInputs = buildInputs;
-        dontInstall = true;
-      })
+      in
+      stdenv.mkDerivation (
+        finalAttrs:
+        {
+          inherit pname version;
+          src =
+            let
+              owner-repo = lib.splitString "/" (lib.removePrefix "github.com/" pname);
+              owner = builtins.elemAt owner-repo 0;
+              repo = builtins.elemAt owner-repo 1;
+            in
+            fetchFromGitHub {
+              inherit owner repo hash;
+              rev = if rev != null then rev else "v${finalAttrs.version}";
+            };
+          nativeBuildInputs = [
+            hooks.configureGoVendor
+            hooks.configureGoCache
+            hooks.buildGo
+            hooks.buildGoCacheOutputSetupHook
+            hooks.buildGoVendorOutputSetupHook
+          ] ++ nativeBuildInputs;
+          propagatedBuildInputs = buildInputs;
+          dontInstall = true;
+        }
+        // args'
+      )
     ) { };
 
     goVendorSrc = callPackage (
