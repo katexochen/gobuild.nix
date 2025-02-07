@@ -418,8 +418,8 @@ lib.makeScope newScope (
       { mkGoModule, goPackages }:
       mkGoModule {
         pname = "github.com/tinylib/msgp";
-        version = "1.1.0";
-        hash = "";
+        version = "1.2.5";
+        hash = "sha256-Cgw+BEGuiI+Cq40ojBuAGHZuYAQsPI5eoRaHfaYs6PQ=";
         buildInputs = [
           goPackages."github.com/philhofer/fwd"
           goPackages."golang.org/x/tools"
