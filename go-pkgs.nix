@@ -351,11 +351,19 @@ lib.makeScope newScope (
       }
     ) { };
     "github.com/pkg/errors" = callPackage (
-      { mkGoModule }:
+      { mkGoModule, go }:
       mkGoModule {
         pname = "github.com/pkg/errors";
         version = "0.9.1";
         hash = "sha256-mNfQtcrQmu3sNg/7IwiieKWOgFQOVVe2yXgKBpe/wZw=";
+        nativeBuildInputs = [
+          go
+        ];
+        postPatch = ''
+          rm Makefile
+          export HOME=$(mktemp -d)
+          go mod init github.com/pkg/errors
+        '';
       }
     ) { };
     "github.com/mattn/go-isatty" = callPackage (
