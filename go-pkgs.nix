@@ -41,6 +41,7 @@ lib.makeScope newScope (
         pname,
         hash,
         version,
+        rev ? null,
         buildInputs ? [ ],
       }:
       stdenv.mkDerivation (finalAttrs: {
@@ -53,7 +54,7 @@ lib.makeScope newScope (
           in
           fetchFromGitHub {
             inherit owner repo hash;
-            rev = "v${finalAttrs.version}";
+            rev = if rev != null then rev else "v${finalAttrs.version}";
           };
         nativeBuildInputs = [
           hooks.configureGoVendor
@@ -429,8 +430,9 @@ lib.makeScope newScope (
       { mkGoModule }:
       mkGoModule {
         pname = "github.com/philhofer/fwd";
-        version = "1.1.2";
-        hash = "sha256-N+jWn8FSjVlb/OAWmvLTm2G5/ckIkhzSPePXoeymfyA=";
+        version = "1.1.3-0.20240916144458-20a13a1f6b7c";
+        rev = "20a13a1f6b7cb47a126dcb75152e21e1383bbaba";
+        hash = "sha256-cGx2/0QQay46MYGZuamFmU0TzNaFyaO+J7Ddzlr/3dI=";
       }
     ) { };
     "github.com/yuin/goldmark" = callPackage (
