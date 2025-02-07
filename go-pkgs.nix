@@ -226,15 +226,17 @@ lib.makeScope newScope (
 
             export GO_NO_VENDOR_CHECKS=1
             export HOME=$(mktemp -d)
-
-            # sed -i '/^require/ s|$| // indirect|' go.mod
-            # cat go.mod
+            mkdir -p "$out/nix-support"
           ''
           + (lib.pipe srcs [
             (lib.mapAttrsToList (
               pname: src: ''
                 echo "Building ${pname}/..."
                 go build ${pname}/...
+
+                cat >>"$out/nix-support/setup-hook" <<EOF
+                appendToVar NIX_GO_VENDOR "${pname}@${src.version or src.rev}:${src}"
+                EOF
               ''
             ))
             (lib.concatStringsSep "\n")
@@ -243,29 +245,9 @@ lib.makeScope newScope (
             runHook postBuild
           '';
 
-        passthru = lib.mapAttrs' (
-          name: src:
-          (lib.nameValuePair src.name (
-            stdenv.mkDerivation {
-              pname = name;
-              version = lib.removePrefix "v" (src.version or src.rev);
-              inherit src;
-              nativeBuildInputs = [
-                hooks.buildGoCacheOutputSetupHook
-                hooks.buildGoVendorOutputSetupHook
-              ];
-              buildPhase = ''
-                runHook preBuild
-
-                mkdir -p $out
-                cp -r ${goPackages."_golang.org/x"}/* $out/
-
-                runHook postBuild
-              '';
-              dontInstall = true;
-            }
-          ))
-        ) srcs;
+        passthru = {
+          inherit srcs;
+        };
       })
     ) { };
     "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x".crypto) { };
