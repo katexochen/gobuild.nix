@@ -469,12 +469,141 @@ lib.makeScope newScope (
         hash = "sha256-RS3xKcImH4gP5c02aEzf3cIlo1kmkUge9rjbpLIlyOI=";
       }
     ) { };
-    "" = callPackage (
+    "github.com/stretchr/testify" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/stretchr/testify";
+        version = "1.10.0";
+        hash = "sha256-BbS4P2ZkFPHkIf0FM5sK4CnSy4eKqhpoOwoNGPFtKzw=";
+        buildInputs = [
+          goPackages."github.com/davecgh/go-spew"
+          goPackages."github.com/pmezard/go-difflib"
+          goPackages."github.com/stretchr/objx"
+          goPackages."gopkg.in/yaml.v3"
+        ];
+      }
+    ) { };
+    "github.com/davecgh/go-spew" = callPackage (
       { mkGoModule }:
       mkGoModule {
-        pname = "";
-        version = "";
-        hash = "";
+        pname = "github.com/davecgh/go-spew";
+        version = "1.1.1";
+        hash = "sha256-nhzSUrE1fCkN0+RL04N4h8jWmRFPPPWbCuDc7Ss0akI=";
+        nativeBuildInputs = [ go ];
+        # no go.mod file
+        postPatch = ''
+          export HOME=$(mktemp -d)
+          go mod init github.com/davecgh/go-spew
+        '';
+      }
+    ) { };
+    "github.com/pmezard/go-difflib" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/pmezard/go-difflib";
+        version = "1.0.0";
+        hash = "sha256-/FtmHnaGjdvEIKAJtrUfEhV7EVo5A/eYrtdnUkuxLDA=";
+        nativeBuildInputs = [ go ];
+        # no go.mod file
+        postPatch = ''
+          export HOME=$(mktemp -d)
+          go mod init github.com/davecgh/go-spew
+        '';
+      }
+    ) { };
+    "github.com/stretchr/objx" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/stretchr/objx";
+        version = "0.5.2";
+        hash = "sha256-VKYxrrFb1nkX6Wu3tE5DoP9+fCttwSl9pgLN6567nck=";
+        buildInputs = [
+          # goPackages."github.com/stretchr/testify" # circular dependency
+        ];
+      }
+    ) { };
+    "gopkg.in/yaml.v3" = callPackage (
+      {
+        mkGoModule,
+        goPackages,
+        fetchFromGitHub,
+      }:
+      mkGoModule rec {
+        pname = "gopkg.in/yaml.v3";
+        version = "3.0.1";
+        src = fetchFromGitHub {
+          owner = "go-yaml";
+          repo = "yaml";
+          rev = "v${version}";
+          hash = "sha256-FqL9TKYJ0XkNwJFnq9j0VvJ5ZUU1RvH/52h/f5bkYAU=";
+        };
+        buildInputs = [
+          goPackages."gopkg.in/check.v1"
+        ];
+      }
+    ) { };
+    "gopkg.in/check.v1" = callPackage (
+      {
+        mkGoModule,
+        goPackages,
+        fetchFromGitHub,
+      }:
+      mkGoModule {
+        pname = "gopkg.in/check.v1";
+        version = "1.0.0-20201130134442-10cb98267c6c";
+        src = fetchFromGitHub {
+          owner = "go-check";
+          repo = "check";
+          rev = "10cb98267c6cb43ea9cd6793f29ff4089c306974";
+          hash = "sha256-VlIpM2r/OD+kkyItn6vW35dyc0rtkJufA93rjFyzncs=";
+        };
+        buildInputs = [
+          goPackages."github.com/kr/pretty"
+        ];
+      }
+    ) { };
+    "github.com/kr/pretty" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/kr/pretty";
+        version = "0.3.1";
+        hash = "sha256-DlER7XM+xiaLjvebcIPiB12oVNjyZHuJHoRGITzzpKU=";
+        buildInputs = [
+          goPackages."github.com/kr/text"
+          goPackages."github.com/rogpeppe/go-internal"
+        ];
+      }
+    ) { };
+    "github.com/kr/text" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/kr/text";
+        version = "0.2.0";
+        hash = "sha256-fadcWxZOORv44oak3jTxm6YcITcFxdGt4bpn869HxUE=";
+        buildInputs = [
+          goPackages."github.com/creack/pty"
+        ];
+      }
+    ) { };
+    "github.com/creack/pty" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/creack/pty";
+        version = "1.1.24";
+        hash = "sha256-RTjW1MrV0Hje6eDCsf+IVQHM/gec5REaXznvsxz8xHs=";
+      }
+    ) { };
+    "github.com/rogpeppe/go-internal" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/rogpeppe/go-internal";
+        version = "1.13.1";
+        hash = "sha256-fD4n3XVDNHL7hfUXK9qi31LpBVzWnRK/7LNc3BmPtnU=";
+        buildInputs = [
+          goPackages."golang.org/x/mod"
+          goPackages."golang.org/x/sys"
+          goPackages."golang.org/x/tools"
+        ];
       }
     ) { };
   }
