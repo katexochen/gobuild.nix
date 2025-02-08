@@ -433,7 +433,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/Workiva/go-datastructures";
         version = "1.1.5";
-        hash = "";
+        hash = "sha256-p0swqWVvk9FTnrBM6PwtM+ffFWNxj8kdW+UjVcH7ZSY=";
         buildInputs = [
           goPackages."github.com/stretchr/testify"
           goPackages."github.com/tinylib/msgp"
