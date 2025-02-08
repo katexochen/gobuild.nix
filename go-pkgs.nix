@@ -39,7 +39,8 @@ lib.makeScope newScope (
       }:
       {
         pname,
-        hash,
+        src ? null,
+        hash ? null,
         version,
         rev ? null,
         buildInputs ? [ ],
@@ -59,15 +60,18 @@ lib.makeScope newScope (
         {
           inherit pname version;
           src =
-            let
-              owner-repo = lib.splitString "/" (lib.removePrefix "github.com/" pname);
-              owner = builtins.elemAt owner-repo 0;
-              repo = builtins.elemAt owner-repo 1;
-            in
-            fetchFromGitHub {
-              inherit owner repo hash;
-              rev = if rev != null then rev else "v${finalAttrs.version}";
-            };
+            if src != null then
+              src
+            else
+              let
+                owner-repo = lib.splitString "/" (lib.removePrefix "github.com/" pname);
+                owner = builtins.elemAt owner-repo 0;
+                repo = builtins.elemAt owner-repo 1;
+              in
+              fetchFromGitHub {
+                inherit owner repo hash;
+                rev = if rev != null then rev else "v${finalAttrs.version}";
+              };
           nativeBuildInputs = [
             hooks.configureGoVendor
             hooks.configureGoCache
