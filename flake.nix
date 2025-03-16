@@ -2,7 +2,7 @@
   description = "A very basic flake";
 
   inputs = {
-    nixpkgs.url = "github:katexochen/nixpkgs?ref=mp/go-fix-vendor-load";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
   };
 
   outputs =
