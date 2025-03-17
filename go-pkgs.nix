@@ -586,7 +586,7 @@ lib.makeScope newScope (
         hash = "sha256-DlER7XM+xiaLjvebcIPiB12oVNjyZHuJHoRGITzzpKU=";
         buildInputs = [
           goPackages."github.com/kr/text"
-          goPackages."github.com/rogpeppe/go-internal"
+          goPackages."github.com".rogpeppe.go-internal
         ];
       }
     ) { };
@@ -609,18 +609,9 @@ lib.makeScope newScope (
         hash = "sha256-RTjW1MrV0Hje6eDCsf+IVQHM/gec5REaXznvsxz8xHs=";
       }
     ) { };
-    "github.com/rogpeppe/go-internal" = callPackage (
-      { mkGoModule, goPackages }:
-      mkGoModule {
-        pname = "github.com/rogpeppe/go-internal";
-        version = "1.13.1";
-        hash = "sha256-fD4n3XVDNHL7hfUXK9qi31LpBVzWnRK/7LNc3BmPtnU=";
-        buildInputs = [
-          goPackages."golang.org/x/mod"
-          goPackages."golang.org/x/sys"
-          goPackages."golang.org/x/tools"
-        ];
-      }
-    ) { };
   }
+  // (lib.packagesFromDirectoryRecursive {
+    inherit (final) callPackage;
+    directory = ./go-packages;
+  })
 )
