@@ -21,22 +21,45 @@ func main() {
 		return
 	}
 
-	output, err := fetch(importPath, version)
+	hash, storePath, err := fetch(importPath, version)
 	if err != nil {
 		log.Fatalf("Error prefetching %q: %v", os.Args[1], err)
 	}
-	log.Printf("Output %s", output)
+
+	pkg := Pkg{
+		ImportPath: importPath,
+		Version:    version,
+		Source:     Source{StorePath: storePath, Hash: hash},
+	}
+	log.Printf("Pkg: %s", pkg)
 }
 
-func fetch(importPath, version string) (string, error) {
+type Pkg struct {
+	ImportPath string
+	Version    string
+	Source     Source
+}
+
+type Source struct {
+	StorePath string
+	Hash      string
+}
+
+func fetch(importPath, version string) (hash, storePath string, retErr error) {
 	cmd := exec.Command("nix-prefetch-url", "--print-path", "--unpack", fmt.Sprintf("https://%s/archive/refs/tags/%s.tar.gz", importPath, version))
 	output, err := cmd.Output()
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		return "", fmt.Errorf("executing nix-prefetch-url: %s", exitErr.Stderr)
+		return "", "", fmt.Errorf("executing nix-prefetch-url: %s", exitErr.Stderr)
 	}
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return string(output), nil
+
+	hash, storePath, ok := strings.Cut(string(output), "\n")
+	if !ok {
+		return "", "", fmt.Errorf("splitting nix-prefetch-url output:", string(output))
+	}
+
+	return hash, storePath, nil
 }
