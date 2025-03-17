@@ -73,11 +73,7 @@ lib.makeScope newScope (
                 rev = if rev != null then rev else "v${finalAttrs.version}";
               };
           nativeBuildInputs = [
-            hooks.configureGoVendor
-            hooks.configureGoCache
-            hooks.buildGo
-            hooks.buildGoCacheOutputSetupHook
-            hooks.buildGoVendorOutputSetupHook
+            hooks.makeGoDependency
           ] ++ nativeBuildInputs;
           propagatedBuildInputs = buildInputs;
           dontInstall = true;

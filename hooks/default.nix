@@ -11,6 +11,20 @@ let
 in
 
 {
+  makeGoDependency = callPackage (
+    { hooks }:
+    makeSetupHook {
+      name = "make-go-dependency-hook";
+      propagatedBuildInputs = [
+        hooks.configureGoVendor
+        hooks.configureGoCache
+        hooks.buildGo
+        hooks.buildGoCacheOutputSetupHook
+        hooks.buildGoVendorOutputSetupHook
+      ];
+    } ./make-go-dependency.sh
+  ) { };
+
   configureGoCache = callPackage (
     { }:
     makeSetupHook {
