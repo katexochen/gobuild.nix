@@ -10,12 +10,7 @@
 let
 
   # Go package set containing build cache output & hooks
-  goPackages = pkgs.callPackage ./go-pkgs.nix {
-    # Override Go with cache experiment (not required for 1.24+)
-    go = pkgs.go.overrideAttrs (old: {
-      env.GOEXPERIMENT = "cacheprog";
-    });
-  };
+  goPackages = pkgs.callPackage ./go-pkgs.nix { };
 
   cacher = goPackages.gobuild-nix-cacher;
 
@@ -28,7 +23,6 @@ pkgs.mkShell {
   ];
 
   env = {
-    GOEXPERIMENT = "cacheprog";
     # GOCACHEPROG = pkgs.lib.getExe cacher;
   };
 }
