@@ -25,20 +25,10 @@ in
       inherit (base) version src;
 
       buildInputs = [
-        # base
         goPackages."golang.org/x/sys"
       ];
 
-      nativeBuildInputs =
-        let
-          inherit (goPackages) hooks;
-        in
-        [
-          hooks.configureGoVendor
-          hooks.configureGoCache
-          hooks.buildGo
-          hooks.installGo
-        ];
+      nativeBuildInputs = [ goPackages.hooks.makeGoBinary ];
     };
 
   simple-package = pkgs.stdenv.mkDerivation (finalAttrs: {
@@ -46,16 +36,7 @@ in
 
     src = ./fixtures/simple-package;
 
-    nativeBuildInputs =
-      let
-        inherit (goPackages) hooks;
-      in
-      [
-        hooks.configureGoVendor
-        hooks.configureGoCache
-        hooks.buildGo
-        hooks.installGo
-      ];
+    nativeBuildInputs = [ goPackages.hooks.makeGoBinary ];
 
     buildInputs = [
       goPackages."github.com/alecthomas/kong"
@@ -78,16 +59,7 @@ in
         --replace-fail 'readVersion())' '"v${finalAttrs.version}")'
     '';
 
-    nativeBuildInputs =
-      let
-        inherit (goPackages) hooks;
-      in
-      [
-        hooks.configureGoVendor
-        hooks.configureGoCache
-        hooks.buildGo
-        hooks.installGo
-      ];
+    nativeBuildInputs = [ goPackages.hooks.makeGoBinary ];
 
     buildInputs = [
       goPackages."github.com/Workiva/go-datastructures"

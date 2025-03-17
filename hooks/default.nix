@@ -25,6 +25,19 @@ in
     } ./make-go-dependency.sh
   ) { };
 
+  makeGoBinary = callPackage (
+    { hooks }:
+    makeSetupHook {
+      name = "make-go-binary-hook";
+      propagatedBuildInputs = [
+        hooks.configureGoVendor
+        hooks.configureGoCache
+        hooks.buildGo
+        hooks.installGo
+      ];
+    } ./make-go-binary.sh
+  ) { };
+
   configureGoCache = callPackage (
     { }:
     makeSetupHook {
