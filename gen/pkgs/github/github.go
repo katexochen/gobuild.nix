@@ -32,7 +32,7 @@ func GetFullCommitHash(owner, repo, shortHash, token string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API error: %s", resp.Status)
+		return "", fmt.Errorf("got HTTP status %s for request: %s", resp.Status, url)
 	}
 
 	var commit gitHubCommitResponse
