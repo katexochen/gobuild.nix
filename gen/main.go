@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -14,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/katexochen/gobuild.nix/gen/pkgs/github"
+	"github.com/katexochen/gobuild.nix/gen/pkgs/gomod"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 )
@@ -65,7 +67,12 @@ func Package(importPath string, versionStr string, override bool) error {
 		return nil
 	}
 
-	src, err := FetchFromGitHubFromImportPath(importPath)
+	meta, err := gomod.FetchGoImportMeta(importPath)
+	if err != nil {
+		return fmt.Errorf("fetching go mod meta data: %w", err)
+	}
+
+	src, err := FetchFromGitHubFromImportPath(meta.RepoURL)
 	if err != nil {
 		return fmt.Errorf("creating src from import path: %w", err)
 	}
@@ -254,11 +261,27 @@ type FetchFromGitHub struct {
 	storePath string
 }
 
-func FetchFromGitHubFromImportPath(importPath string) (FetchFromGitHub, error) {
-	parts := strings.Split(importPath, "/")
+func FetchFromGitHubFromImportPath(githubURL string) (FetchFromGitHub, error) {
+	var ffg = FetchFromGitHub{}
+	parsedURL, err := url.Parse(githubURL)
+	if err != nil {
+		return ffg, fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if parsedURL.Host != "github.com" {
+		return ffg, fmt.Errorf("not a valid GitHub URL")
+	}
+
+	parts := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
+	if len(parts) < 2 {
+		return ffg, fmt.Errorf("invalid GitHub repo URL format")
+	}
+
+	owner := parts[0]
+	repo := strings.TrimSuffix(parts[1], ".git")
 	return FetchFromGitHub{
-		Owner: parts[1],
-		Repo:  parts[2],
+		Owner: owner,
+		Repo:  repo,
 	}, nil
 }
 
