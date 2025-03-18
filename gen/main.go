@@ -110,7 +110,8 @@ func Package(importPath, version string, override bool) error {
 	if err := os.MkdirAll(filepath.Join(goPkgsPath, importPath), 0o755); err != nil {
 		return fmt.Errorf("creating go-packages directory: %w", err)
 	}
-	f, err := os.OpenFile(filepath.Join(goPkgsPath, importPath, "package.nix"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	outputPath := filepath.Join(goPkgsPath, importPath, "package.nix")
+	f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating go-packages file: %w", err)
 	}
@@ -119,7 +120,7 @@ func Package(importPath, version string, override bool) error {
 		return fmt.Errorf("writing go-packages file: %w", err)
 	}
 
-	log.Printf("Packaged %s@%s\n", importPath, version)
+	log.Printf("Generated %s", outputPath)
 
 	// If there's no modfile we can't recurse into the dependencies.
 	if modFile == nil {
