@@ -36,9 +36,27 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return Package(importPath, version, override)
+}
+
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gen <go-import-path>",
+		Short: "gen",
+		RunE:  runRoot,
+	}
+	cmd.Flags().Bool("override", false, "override existing files")
+	return cmd
+}
+
+func Package(importPath, version string, override bool) error {
 	if _, err := os.Stat(path.Join(goPkgsPath, importPath)); err == nil && !override {
+		// Package already exists, and we don't want to update existing code.
+		log.Printf("Package %s already exists, not updating it (pass --override to update existing packages)\n", importPath)
 		return nil
 	}
+
+	log.Printf("Packaging %s@%s\n", importPath, version)
 
 	src, err := FetchFromGitHubFromImportpath(importPath)
 	if err != nil {
@@ -49,20 +67,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	src.Hash, src.storePath, err = fetch(src)
 	if err != nil {
-		return fmt.Errorf("prefetching %q: %w", args[0], err)
-	}
-
-	modFile, err := readMod(path.Join(src.storePath, "go.mod"))
-	if err != nil {
-		return fmt.Errorf("reading go.mod: %w", err)
-	}
-
-	var directRequires []string
-	for _, r := range modFile.Require {
-		if r.Indirect {
-			continue
-		}
-		directRequires = append(directRequires, fmt.Sprintf("goPackages.%q", r.Mod.Path))
+		return fmt.Errorf("fetching '%s@%s': %w", importPath, version, err)
 	}
 
 	pkg := Pkg{
@@ -77,8 +82,25 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		NativeBuildInputs: []string{
 			"goPackages.hooks.makeGoDependency",
 		},
-		PropagatedBuildInputs: directRequires,
 	}
+
+	modFile, err := readMod(path.Join(src.storePath, "go.mod"))
+	if errors.Is(err, os.ErrNotExist) {
+		pkg.PostPatch = []string{
+			"export HOME=$(pwd)",
+			fmt.Sprintf("go mod init %s", importPath),
+		}
+	} else if err != nil {
+		return fmt.Errorf("reading go.mod: %w", err)
+	} else {
+		for _, r := range modFile.Require {
+			if r.Indirect {
+				continue
+			}
+			pkg.PropagatedBuildInputs = append(pkg.PropagatedBuildInputs, fmt.Sprintf("goPackages.%q", r.Mod.Path))
+		}
+	}
+
 	out, err := pkg.MarshalText()
 	if err != nil {
 		return fmt.Errorf("marshaling src: %w", err)
@@ -96,17 +118,27 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	if _, err := f.Write(out); err != nil {
 		return fmt.Errorf("writing go-packages file: %w", err)
 	}
-	return nil
-}
 
-func newRootCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "gen <go-import-path>",
-		Short: "gen",
-		RunE:  runRoot,
+	log.Printf("Packaged %s@%s\n", importPath, version)
+
+	var deps []*modfile.Require
+	for _, r := range modFile.Require {
+		if r.Indirect {
+			continue
+		}
+		deps = append(deps, r)
 	}
-	cmd.Flags().Bool("override", false, "override existing files")
-	return cmd
+
+	for _, dep := range deps {
+		if strings.HasPrefix(dep.Mod.Path, "golang.org/x") {
+			continue
+		}
+		if err := Package(dep.Mod.Path, dep.Mod.Version, override); err != nil {
+			return fmt.Errorf("packaging dependency %q: %w", dep.Mod.Path, err)
+		}
+	}
+
+	return nil
 }
 
 type Pkg struct {
@@ -114,6 +146,7 @@ type Pkg struct {
 	ImportPath            string
 	Version               string
 	Source                FetchFromGitHub
+	PostPatch             []string
 	NativeBuildInputs     []string
 	PropagatedBuildInputs []string
 }
@@ -133,6 +166,13 @@ func (p Pkg) MarshalText() ([]byte, error) {
 		return nil, err
 	}
 	b.WriteString(fmt.Sprintf("\nsrc = %s;\n\n", src))
+	if len(p.PostPatch) > 0 {
+		b.WriteString("postPatch = ''\n")
+		for _, pf := range p.PostPatch {
+			b.WriteString(fmt.Sprintf("%s\n", pf))
+		}
+		b.WriteString("'';\n\n")
+	}
 	b.WriteString("nativeBuildInputs = [\n")
 	for _, nbi := range p.NativeBuildInputs {
 		b.WriteString(fmt.Sprintf("%s\n", nbi))
@@ -161,9 +201,6 @@ type FetchFromGitHub struct {
 
 func FetchFromGitHubFromImportpath(importPath string) (FetchFromGitHub, error) {
 	parts := strings.Split(importPath, "/")
-	if len(parts) != 3 {
-		log.Fatalf("Invalid import path: %q. Expected 'github.com/owner/repo'", importPath)
-	}
 	return FetchFromGitHub{
 		Owner: parts[1],
 		Repo:  parts[2],
