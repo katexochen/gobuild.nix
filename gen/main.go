@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -49,21 +50,25 @@ func newRootCmd() *cobra.Command {
 	return cmd
 }
 
-func Package(importPath, version string, override bool) error {
+func Package(importPath string, versionStr string, override bool) error {
+	log.Printf("Packaging %s@%s\n", importPath, versionStr)
+
+	version, err := ParseGoModVersion(versionStr)
+	if err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(path.Join(goPkgsPath, importPath)); err == nil && !override {
 		// Package already exists, and we don't want to update existing code.
 		log.Printf("Package %s already exists, not updating it (pass --override to update existing packages)\n", importPath)
 		return nil
 	}
 
-	log.Printf("Packaging %s@%s\n", importPath, version)
-
 	src, err := FetchFromGitHubFromImportpath(importPath)
 	if err != nil {
 		return fmt.Errorf("creating src from import path: %w", err)
 	}
-	src.Tag = version
-	version = strings.TrimPrefix(version, "v")
+	src.Tag = fmt.Sprintf("v%s", version.Version)
 
 	src.Hash, src.storePath, err = fetch(src)
 	if err != nil {
@@ -77,7 +82,7 @@ func Package(importPath, version string, override bool) error {
 			"goPackages",
 		},
 		ImportPath: importPath,
-		Version:    version,
+		Version:    version.Version,
 		Source:     src,
 		NativeBuildInputs: []string{
 			"goPackages.hooks.makeGoDependency",
@@ -144,6 +149,38 @@ func Package(importPath, version string, override bool) error {
 	}
 
 	return nil
+}
+
+type GoModVersion struct {
+	Version      string
+	Timestamp    string
+	GitShortHash string
+}
+
+func (g GoModVersion) String() string {
+	if g.Timestamp != "" && g.GitShortHash != "" {
+		return fmt.Sprintf("v%s-0.%s-%s", g.Version, g.Timestamp, g.GitShortHash)
+	}
+	return fmt.Sprintf("v%s", g.Version)
+}
+
+func ParseGoModVersion(str string) (GoModVersion, error) {
+	gmv := GoModVersion{}
+	// Regular expression to match the version with optional timestamp and git hash
+	re := regexp.MustCompile(`^v(\d+\.\d+\.\d+)(?:(?:-pre\.)?-0\.(\d{14})-([a-f0-9]{12}))?$`)
+
+	matches := re.FindStringSubmatch(str)
+	if matches == nil {
+		return gmv, fmt.Errorf("version %q does not match expected format", str)
+	}
+
+	gmv.Version = matches[1]
+	if len(matches) > 2 {
+		gmv.Timestamp = matches[2]
+		gmv.GitShortHash = matches[3]
+	}
+
+	return gmv, nil
 }
 
 type Pkg struct {
