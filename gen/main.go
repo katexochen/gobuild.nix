@@ -64,9 +64,12 @@ func Package(importPath string, versionStr string, override bool) error {
 		return nil
 	}
 
-	src, err := FetchFromGitHubFromImportpath(importPath)
+	src, err := FetchFromGitHubFromImportPath(importPath)
 	if err != nil {
 		return fmt.Errorf("creating src from import path: %w", err)
+	}
+	if version.IsPseudo() {
+		return fmt.Errorf("pseudo versions are not supported")
 	}
 	src.Tag = fmt.Sprintf("v%s", version.Version)
 
@@ -158,10 +161,14 @@ type GoModVersion struct {
 }
 
 func (g GoModVersion) String() string {
-	if g.Timestamp != "" && g.GitShortHash != "" {
+	if g.IsPseudo() {
 		return fmt.Sprintf("v%s-0.%s-%s", g.Version, g.Timestamp, g.GitShortHash)
 	}
 	return fmt.Sprintf("v%s", g.Version)
+}
+
+func (g GoModVersion) IsPseudo() bool {
+	return g.Timestamp != "" && g.GitShortHash != ""
 }
 
 func ParseGoModVersion(str string) (GoModVersion, error) {
@@ -241,7 +248,7 @@ type FetchFromGitHub struct {
 	storePath string
 }
 
-func FetchFromGitHubFromImportpath(importPath string) (FetchFromGitHub, error) {
+func FetchFromGitHubFromImportPath(importPath string) (FetchFromGitHub, error) {
 	parts := strings.Split(importPath, "/")
 	return FetchFromGitHub{
 		Owner: parts[1],
