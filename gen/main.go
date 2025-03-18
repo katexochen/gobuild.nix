@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,35 +12,49 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 )
 
 const goPkgsPath = "go-packages"
 
 func main() {
-	importPath, version, ok := strings.Cut(os.Args[1], "@")
-	if !ok {
-		log.Fatalf("Invalid import path format: %q. Expected 'pname@version'", os.Args[1])
+	cmd := newRootCmd()
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		os.Exit(1)
 	}
-	// if _, err := os.Stat(path.Join(goPkgsPath, importPath)); err == nil {
-	// 	return
-	// }
+}
+
+func runRoot(cmd *cobra.Command, args []string) error {
+	importPath, version, ok := strings.Cut(args[0], "@")
+	if !ok {
+		return fmt.Errorf("invalid import path format: %q. Expected 'pname@version'", args[0])
+	}
+
+	override, err := cmd.Flags().GetBool("override")
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(path.Join(goPkgsPath, importPath)); err == nil && !override {
+		return nil
+	}
 
 	src, err := FetchFromGitHubFromImportpath(importPath)
 	if err != nil {
-		log.Fatalf("Error creating src from import path: %v", err)
+		return fmt.Errorf("creating src from import path: %w", err)
 	}
 	src.Tag = version
 	version = strings.TrimPrefix(version, "v")
 
 	src.Hash, src.storePath, err = fetch(src)
 	if err != nil {
-		log.Fatalf("Error prefetching %q: %v", os.Args[1], err)
+		return fmt.Errorf("prefetching %q: %w", args[0], err)
 	}
 
 	modFile, err := readMod(path.Join(src.storePath, "go.mod"))
 	if err != nil {
-		log.Fatalf("Error reading go.mod: %v", err)
+		return fmt.Errorf("reading go.mod: %w", err)
 	}
 
 	var directRequires []string
@@ -66,21 +81,32 @@ func main() {
 	}
 	out, err := pkg.MarshalText()
 	if err != nil {
-		log.Fatalf("Error marshaling src: %v", err)
+		return fmt.Errorf("marshaling src: %w", err)
 	}
 	out = nixfmt(out)
 
-	if err := os.MkdirAll(importPath, 0o755); err != nil {
-		log.Fatalf("Error creating go-packages directory: %v", err)
+	if err := os.MkdirAll(filepath.Join(goPkgsPath, importPath), 0o755); err != nil {
+		return fmt.Errorf("creating go-packages directory: %w", err)
 	}
 	f, err := os.OpenFile(filepath.Join(goPkgsPath, importPath, "package.nix"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
-		log.Fatalf("Error creating go-packages file: %v", err)
+		return fmt.Errorf("creating go-packages file: %w", err)
 	}
 	defer f.Close()
 	if _, err := f.Write(out); err != nil {
-		log.Fatalf("Error writing go-packages file: %v", err)
+		return fmt.Errorf("writing go-packages file: %w", err)
 	}
+	return nil
+}
+
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gen <go-import-path>",
+		Short: "gen",
+		RunE:  runRoot,
+	}
+	cmd.Flags().Bool("override", false, "override existing files")
+	return cmd
 }
 
 type Pkg struct {
