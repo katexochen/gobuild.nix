@@ -121,6 +121,10 @@ func Package(importPath, version string, override bool) error {
 
 	log.Printf("Packaged %s@%s\n", importPath, version)
 
+	// If there's no modfile we can't recurse into the dependencies.
+	if modFile == nil {
+		return nil
+	}
 	var deps []*modfile.Require
 	for _, r := range modFile.Require {
 		if r.Indirect {
