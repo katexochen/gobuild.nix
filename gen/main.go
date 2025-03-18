@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/katexochen/gobuild.nix/gen/pkgs/github"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 )
@@ -69,9 +70,14 @@ func Package(importPath string, versionStr string, override bool) error {
 		return fmt.Errorf("creating src from import path: %w", err)
 	}
 	if version.IsPseudo() {
-		return fmt.Errorf("pseudo versions are not supported")
+		rev, err := github.GetFullCommitHash(src.Owner, src.Repo, version.GitShortHash, "")
+		if err != nil {
+			return err
+		}
+		src.Rev = rev
+	} else {
+		src.Tag = fmt.Sprintf("v%s", version.Version)
 	}
-	src.Tag = fmt.Sprintf("v%s", version.Version)
 
 	src.Hash, src.storePath, err = fetch(src)
 	if err != nil {
