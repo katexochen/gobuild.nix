@@ -20,6 +20,7 @@ pkgs.mkShell {
   packages = [
     goPackages.go
     cacher
+    pkgs.nixfmt-rfc-style
   ];
 
   env = {
