@@ -25,7 +25,7 @@ func (g GoModVersion) IsPseudo() bool {
 func ParseGoModVersion(str string) (GoModVersion, error) {
 	gmv := GoModVersion{}
 	// Regular expression to match the version with optional timestamp and git hash
-	re := regexp.MustCompile(`^v(\d+\.\d+\.\d+)(?:(?:-pre\.)?-0\.(\d{14})-([a-f0-9]{12}))?$`)
+	re := regexp.MustCompile(`^v(\d+\.\d+\.\d+)(?:-(?:pre\.)?(?:0\.)?(\d{14})-([a-f0-9]{12}))?$`)
 
 	matches := re.FindStringSubmatch(str)
 	if matches == nil {
