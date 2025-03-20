@@ -1,21 +1,26 @@
 {
   stdenv,
-  fetchFromGitHub,
   goPackages,
+  fetchFromGoProxy,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "github.com/rogpeppe/go-internal";
   version = "1.13.1";
 
-  src = fetchFromGitHub {
-    owner = "rogpeppe";
-    repo = "go-internal";
-    tag = "v${finalAttrs.version}";
-    hash = "sha256-fD4n3XVDNHL7hfUXK9qi31LpBVzWnRK/7LNc3BmPtnU=";
+  src = fetchFromGoProxy {
+    pname = "github.com/rogpeppe/go-internal";
+    version = "v${finalAttrs.version}";
+    hash = "sha256-U4L7DSs/h0GEH/m9jfLHNzSNUlYdZigiH5e57+o5hJI=";
   };
 
-  nativeBuildInputs = [ goPackages.hooks.makeGoDependency ];
+  postPatch = ''
+    cd ${finalAttrs.pname}@v${finalAttrs.version}
+  '';
+
+  nativeBuildInputs = [
+    goPackages.hooks.makeGoDependency
+  ];
 
   propagatedBuildInputs = [
     goPackages."golang.org/x/mod"

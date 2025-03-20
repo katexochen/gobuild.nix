@@ -16,11 +16,11 @@ in
     makeSetupHook {
       name = "make-go-dependency-hook";
       propagatedBuildInputs = [
-        hooks.configureGoVendor
+        hooks.configureGoProxy
         hooks.configureGoCache
         hooks.buildGo
         hooks.buildGoCacheOutputSetupHook
-        hooks.buildGoVendorOutputSetupHook
+        hooks.buildGoProxyOutputSetupHook
       ];
     } ./make-go-dependency.sh
   ) { };
@@ -30,7 +30,7 @@ in
     makeSetupHook {
       name = "make-go-binary-hook";
       propagatedBuildInputs = [
-        hooks.configureGoVendor
+        hooks.configureGoProxy
         hooks.configureGoCache
         hooks.buildGo
         hooks.installGo
@@ -58,6 +58,17 @@ in
         go_version = go.version;
       };
     } ./configure-go-vendor.sh
+  ) { };
+
+  configureGoProxy = callPackage (
+    { }:
+    makeSetupHook {
+      name = "configure-go-proxy-hook";
+      substitutions = {
+        go = goExe;
+        go_version = go.version;
+      };
+    } ./configure-go-proxy.sh
   ) { };
 
   buildGo = callPackage (
@@ -98,5 +109,15 @@ in
         go = goExe;
       };
     } ./build-go-vendor-output-setup-hook.sh
+  ) { };
+
+  buildGoProxyOutputSetupHook = callPackage (
+    { }:
+    makeSetupHook {
+      name = "build-go-proxy-output-setup-hook";
+      substitutions = {
+        go = goExe;
+      };
+    } ./build-go-proxy-output-setup-hook.sh
   ) { };
 }

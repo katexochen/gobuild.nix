@@ -52,6 +52,7 @@ This has many benefits, but also some challenges.
   Currently the stdlib isn't pre-compiled, and stdlib cache ends up in whatever derivations first touch those code paths.
 - [ ] Propagate transitive dependencies
 - [ ] Potentially rewrite go.mod to based on version available in Go package set
+- [ ] Custom impl of packagesFromDirectoryRecursive that gives single string package names
 
 ## Related
 
