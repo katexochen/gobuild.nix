@@ -35,14 +35,12 @@ lib.makeScope newScope (
         lib,
         stdenv,
         hooks,
-        fetchFromGitHub,
+        fetchFromGoProxy,
       }:
       {
         pname,
-        src ? null,
         hash ? null,
         version,
-        rev ? null,
         buildInputs ? [ ],
         nativeBuildInputs ? [ ],
         ...
@@ -59,51 +57,47 @@ lib.makeScope newScope (
         finalAttrs:
         {
           inherit pname version;
-          src =
-            if src != null then
-              src
-            else
-              let
-                owner-repo = lib.splitString "/" (lib.removePrefix "github.com/" pname);
-                owner = builtins.elemAt owner-repo 0;
-                repo = builtins.elemAt owner-repo 1;
-              in
-              fetchFromGitHub {
-                inherit owner repo hash;
-                rev = if rev != null then rev else "v${finalAttrs.version}";
-              };
+          src = fetchFromGoProxy {
+            inherit pname hash;
+            version = "v${version}";
+          };
           nativeBuildInputs = [
             hooks.makeGoDependency
           ] ++ nativeBuildInputs;
           propagatedBuildInputs = buildInputs;
           dontInstall = true;
+
+          postPatch = ''
+            ppath=${pname}@v${version}
+            ppath=$(echo "$ppath" | sed 's/\([A-Z]\)/!\L\1/g' | sed 's/!!/!/g')
+            pushd "$ppath"
+          '';
         }
         // args'
       )
     ) { };
 
-    goVendorSrc = callPackage (
-      { runCommand, findutils }:
+    # Fetch source of a Go package from Go proxy.
+    fetchFromGoProxy = callPackage (
+      { runCommandNoCC, go }:
       {
-        src,
-        ...
-      }@args:
-      runCommand (src.name or "source")
+        pname,
+        version,
+        hash,
+      }:
+      runCommandNoCC "goproxy-${pname}-${version}"
         {
-          nativeBuildInputs = [ findutils ];
-          version = args.version or src.rev;
+          buildInputs = [ go ];
+          outputHashMode = "recursive";
+          outputHashAlgo = "sha256";
+          outputHash = hash;
+          passthru = { inherit pname version; };
         }
         ''
-          cp -r ${src} $out
-          chmod +w -R $out
-
-          # Remove submodules from vendored sources
-          find $out \
-            -mindepth 2 \
-            -type f \
-            -name go.mod \
-            -printf '%h\n' \
-            | xargs rm -rf
+          export HOME=$TMPDIR
+          export GOMODCACHE=$out
+          export GOPROXY=https://proxy.golang.org
+          go mod download ${pname}@${version}
         ''
     ) { };
 
@@ -113,117 +107,66 @@ lib.makeScope newScope (
       {
         stdenv,
         hooks,
-        fetchgit,
         goPackages,
-        goVendorSrc,
+        fetchFromGoProxy,
       }:
       let
         srcs = {
-          "golang.org/x/crypto" = fetchgit {
-            name = "crypto";
-            url = "https://go.googlesource.com/crypto";
-            rev = "v0.32.0";
-            hash = "sha256-LLt6IXv4jY3VRjnOT2Yw7Ca0oWCI3P49HDj2Fz887eI=";
+          "golang.org/x/crypto" = fetchFromGoProxy {
+            pname = "golang.org/x/crypto";
+            version = "v0.32.0";
+            hash = "sha256-VYv7SMxdSrTDGZRzvBTg80j/0Vr5dgZxL6EJG6fCVrg=";
           };
-          "golang.org/x/exp" = goVendorSrc {
-            src = fetchgit {
-              name = "exp";
-              url = "https://go.googlesource.com/exp";
-              rev = "7588d65b2ba8549413779549f949cd7a5ccb1320";
-              hash = "sha256-N1qhhNbR6N2RrZqMMLcBUYnF6M3pm8bqGJbp8E25kPA=";
-            };
+          "golang.org/x/exp" = fetchFromGoProxy {
+            pname = "golang.org/x/exp";
             version = "v0.0.0-20250106191152-7588d65b2ba8";
+            hash = "sha256-fv32GYy8Y7yrPoqwPtrH1LpH33vezmfzvzSNsnwam18=";
           };
-          "golang.org/x/mod" = fetchgit {
-            name = "mod";
-            url = "https://go.googlesource.com/mod";
-            rev = "v0.22.0";
-            hash = "sha256-skiXXiDrO33eRHofDPJTFxnYNtsirJaoTpyeCvlrDco=";
+          "golang.org/x/mod" = fetchFromGoProxy {
+            pname = "golang.org/x/mod";
+            version = "v0.22.0";
+            hash = "sha256-8M6tZF3YvI77rvZZK66udF/zsMfRs2NUhvLcGxE1/j4=";
           };
-          "golang.org/x/net" = fetchgit {
-            name = "net";
-            url = "https://go.googlesource.com/net";
-            rev = "v0.34.0";
-            hash = "sha256-AZOLY4MUNxxDw5ZQtO9dmY/YRo1gFW87YvpX/eLTy4Q=";
+          "golang.org/x/net" = fetchFromGoProxy {
+            pname = "golang.org/x/net";
+            version = "v0.34.0";
+            hash = "sha256-zyXIkUJZV1Y25KTsjG+sGeWvV/TeqWycTMzfqYOESS0=";
           };
-          "golang.org/x/sync" = fetchgit {
-            name = "sync";
-            url = "https://go.googlesource.com/sync";
-            rev = "v0.10.0";
-            hash = "sha256-HWruKClrdoBKVdxKCyoazxeQV4dIYLdkHekQvx275/o=";
-          };
-          "golang.org/x/sys" = fetchgit {
-            name = "sys";
-            url = "https://go.googlesource.com/sys";
-            rev = "v0.29.0";
-            hash = "sha256-TGDwlVIdOHHJevpXiH5XrE6nFBVOE+beixd+wcdZeBw=";
-          };
-          "golang.org/x/telemetry" = goVendorSrc {
-            src = fetchgit {
-              name = "telemetry";
-              url = "https://go.googlesource.com/telemetry";
-              rev = "04cd7bae618c3a771d5b69e5134b51345830b696";
-              hash = "sha256-mXsCGO/W6HCZOqWNjjosu5zy77y4Siq4SQYrL/je0tY=";
-            };
+          "golang.org/x/telemetry" = fetchFromGoProxy {
+            pname = "golang.org/x/telemetry";
             version = "v0.0.0-20250117155846-04cd7bae618c";
+            hash = "sha256-KuhoHiV8U098SD124Py6U70QJPanIUhVBWaiLJ+RPrw=";
           };
-          "golang.org/x/term" = fetchgit {
-            name = "term";
-            url = "https://go.googlesource.com/term";
-            rev = "v0.28.0";
-            hash = "sha256-1/iWqndBRFgDL+/tVokkaGHpO/jdyjZ0dN2YWuBdiXQ=";
+          "golang.org/x/term" = fetchFromGoProxy {
+            pname = "golang.org/x/term";
+            version = "v0.28.0";
+            hash = "sha256-Ri1Qrlq0OYnqmfsH7UoFK+iblEOwnM4WKQYJzAIcavA=";
           };
-          "golang.org/x/text" = fetchgit {
-            name = "text";
-            url = "https://go.googlesource.com/text";
-            rev = "v0.21.0";
-            hash = "sha256-m8LVnzj+VeclJflfgO7UcOSYSS052RvRgyjTXCgK8As=";
+          "golang.org/x/text" = fetchFromGoProxy {
+            pname = "golang.org/x/text";
+            version = "v0.21.0";
+            hash = "sha256-1YQLLyVOeEHausyIS4x654nCr3auzSt40ZruL8Hf9HI=";
           };
-          "golang.org/x/time" = fetchgit {
-            name = "time";
-            url = "https://go.googlesource.com/time";
-            rev = "v0.9.0";
-            hash = "sha256-ipaWVIk1+DZg0rfCzBSkz/Y6DEnB7xkX2RRYycHkhC0=";
-          };
-          "golang.org/x/tools" = goVendorSrc {
-            src = fetchgit {
-              name = "tools";
-              url = "https://go.googlesource.com/tools";
-              rev = "v0.29.0";
-              hash = "sha256-h3UjRY1w0AyONADNiLhxXt9/z7Tb/40FJI8rKGXpBeM=";
-            };
-          };
-          "golang.org/x/xerrors" = goVendorSrc {
-            src = fetchgit {
-              name = "xerrors";
-              url = "https://go.googlesource.com/xerrors";
-              rev = "a985d3407aa71f30cf86696ee0a2f409709f22e1";
-              hash = "sha256-kj2qs47n+a4gtKXHJN3U9gcSQ3BozjzYu7EphXjJnwM=";
-            };
-            version = "v0.0.0-20190717185122-a985d3407aa7";
+          "golang.org/x/tools" = fetchFromGoProxy {
+            pname = "golang.org/x/tools";
+            version = "v0.29.0";
+            hash = "sha256-jlxlV8/yr/cXyVC0x3lo8eYwqbfRO+29oiT3+7mJbKE=";
           };
         };
       in
       stdenv.mkDerivation (finalAttrs: {
         name = "golang.org/x";
 
-        unpackPhase = ''
-          runHook preUnpack
+        dontUnpack = true;
+        dontRewriteGoMod = true;
 
-          mkdir -p workdir
-          cd workdir
-          go mod init golang-org-x-combined
-
-          runHook postUnpack
-        '';
-
-        env.NIX_GO_VENDOR = lib.pipe srcs [
-          (lib.mapAttrsToList (pname: src: "${pname}@${src.version or src.rev}:${src}"))
+        env.NIX_GO_PROXY = lib.pipe srcs [
+          (lib.mapAttrsToList (pname: src: "${pname}@${src.version}:${src}"))
           (lib.concatStringsSep " ")
         ];
 
         nativeBuildInputs = [
-          hooks.configureGoVendor
+          hooks.configureGoProxy
           hooks.configureGoCache
           goPackages.go
         ];
@@ -233,24 +176,55 @@ lib.makeScope newScope (
           goPackages."github.com/google/go-cmp"
           goPackages."github.com/google/renameio"
           goPackages."github.com/yuin/goldmark"
+          goPackages."golang.org/x/sync"
+          goPackages."golang.org/x/sys"
+          goPackages."golang.org/x/time"
+          goPackages."golang.org/x/xerrors"
         ];
 
         buildPhase =
           ''
             runHook preBuild
 
-            export GO_NO_VENDOR_CHECKS=1
             export HOME=$(mktemp -d)
             mkdir -p "$out/nix-support"
+            mkdir workspace
+            pushd workspace
           ''
           + (lib.pipe srcs [
             (lib.mapAttrsToList (
               pname: src: ''
+                dirname=$(basename ${pname})
+
+                echo "Copying ${pname}@${src.version} into workspace/$dirname"
+                cp -R ${src}/${src.pname}@${src.version} $dirname
+                chmod -R u+w $dirname
+                pushd $dirname
+
+                echo "Rewriting $dirname/go.mod"
+                rm -rf vendor
+                rm -f go.sum
+                for availableDeps in $NIX_GO_PROXY; do
+                  # Input form is <pname>@v<version>:<storepath>
+                  local storepath="''${availableDeps#*:}"
+                  local pname="''${availableDeps%%@v*}"
+                  local version="''${availableDeps##*@}"
+                  version="''${version%%:*}"
+
+                  echo "adding replace statement for ''${pname}@''${version} to go.mod"
+                  echo "replace $pname => $pname $version" >> go.mod
+                done
+                export GOSUMDB=off
+                go mod tidy
+                echo "go.mod after rewrite:"
+                cat go.mod
+
                 echo "Building ${pname}/..."
-                go build ${pname}/...
+                go build ./...
+                popd
 
                 cat >>"$out/nix-support/setup-hook" <<EOF
-                appendToVar NIX_GO_VENDOR "${pname}@${src.version or src.rev}:${src}"
+                appendToVar NIX_GO_PROXY "${pname}@${src.version}:${src}"
                 EOF
               ''
             ))
@@ -285,26 +259,85 @@ lib.makeScope newScope (
         ) srcs;
       })
     ) { };
-    # TODO: only include propagatedBuildInputs that are actually required for the packages.
     "golang.org/x/crypto" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/exp" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/mod" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/net" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
-    "golang.org/x/sys" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
-    "golang.org/x/sync" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
     "golang.org/x/telemetry" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/term" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
-    "golang.org/x/time" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
     "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
-    "golang.org/x/xerrors" = callPackage ({ goPackages }: goPackages."_golang.org/x") { }; # has no dependencies, can be removed from x set.
+    "golang.org/x/sync" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "golang.org/x/sync";
+        version = "0.10.0";
+        hash = "sha256-FYXUV8yjQrLrFYM6Hwv/OvyNuKJxQt4iso4DcBUmnQ8=";
+      }
+    ) { };
+    "golang.org/x/sys" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "golang.org/x/sys";
+        version = "0.29.0";
+        hash = "sha256-1Af536qFQC1kXToTnI/BAud1wpyIeU95BhqpsThcYTo=";
+      }
+    ) { };
+    "golang.org/x/time" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "golang.org/x/time";
+        version = "0.9.0";
+        hash = "sha256-Mw7yeAUs/HtfpUA4rHb9OCat9RJGjSYgPGI1W1d15gY=";
+      }
+    ) { };
+    "golang.org/x/xerrors" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "golang.org/x/xerrors";
+        version = "0.0.0-20190717185122-a985d3407aa7";
+        hash = "sha256-001Bye5gcBBNZf3Pifkp9f4tfJ7UQaunY53yRHxjMxg=";
+      }
+    ) { };
 
     "github.com/alecthomas/kong" = callPackage (
-      { mkGoModule }:
+      { mkGoModule, goPackages }:
       mkGoModule {
         pname = "github.com/alecthomas/kong";
         version = "1.4.0";
-        hash = "sha256-xfjPNqMa5Qtah4vuSy3n0Zn/G7mtufKlOiTzUemzFcQ=";
+        hash = "sha256-7LoimcJfyBbSuKsV6Ojw9dZUCSLI/rbu2C6JkjaDQrw=";
+        buildInputs = [
+          goPackages."github.com/alecthomas/assert/v2"
+          goPackages."github.com/alecthomas/repr"
+        ];
+      }
+    ) { };
+    "github.com/alecthomas/repr" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/alecthomas/repr";
+        version = "0.4.0";
+        hash = "sha256-rg9KH5Y19L1meD7S5SG0web2NK4xO4NViIp71CUOd1U=";
+      }
+    ) { };
+    "github.com/alecthomas/assert/v2" = callPackage (
+      { mkGoModule, goPackages }:
+      mkGoModule {
+        pname = "github.com/alecthomas/assert/v2";
+        version = "2.11.0";
+        hash = "sha256-SJL1FIiAVGMOTVeepuP83ACHuOXtv3cbOXxFIXhZcOo=";
+        buildInputs = [
+          goPackages."github.com/alecthomas/repr"
+          goPackages."github.com/hexops/gotextdiff"
+        ];
+      }
+    ) { };
+    "github.com/hexops/gotextdiff" = callPackage (
+      { mkGoModule }:
+      mkGoModule {
+        pname = "github.com/hexops/gotextdiff";
+        version = "1.0.3";
+        hash = "sha256-CXlSF7KiqJC8eWK7n3qqRZfIE4e7+lLY9Za8x51acGA=";
       }
     ) { };
     "github.com/fsnotify/fsnotify" = callPackage (
@@ -312,7 +345,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/fsnotify/fsnotify";
         version = "1.8.0";
-        hash = "sha256-+Rxg5q17VaqSU1xKPgurq90+Z1vzXwMLIBSe5UsyI/M=";
+        hash = "sha256-Yn2UBgqvxe/yZKkZcqA9d1ykJn3230CmHvv/NfvppHo=";
         buildInputs = [
           goPackages."golang.org/x/sys"
         ];
@@ -323,7 +356,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/rs/zerolog";
         version = "1.33.0";
-        hash = "sha256-d8lSZ9MuQzAsqdijQ7gHx0Sci9ysMfb3RWGiYJPX5ZE=";
+        hash = "sha256-dj3A+ReK024i9bY3yqg7LIo9KMRx9/f9vSee/AKumAI=";
         buildInputs = [
           goPackages."github.com/coreos/go-systemd/v22"
           goPackages."github.com/mattn/go-colorable"
@@ -339,7 +372,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/rs/xid";
         version = "1.6.0";
-        hash = "sha256-rJB7h3KuH1DPp5n4dY3MiGnV1Y96A10lf5OUl+MLkzU=";
+        hash = "sha256-FKtKHpIVmdv4sLthkKAAPjduFl4UAnDcjQUjx4Zn2og=";
       }
     ) { };
     "github.com/spf13/pflag" = callPackage (
@@ -347,21 +380,21 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/spf13/pflag";
         version = "1.0.5";
-        hash = "sha256-YTRLqLRZJHBh2m1dA99/EepY3DAi/rks1feB9ixT9T4=";
+        hash = "sha256-JAMURPbK5pQ61d3m9QE6FGf+XpwdzT0LvZItojubD2I=";
       }
     ) { };
     "github.com/pkg/errors" = callPackage (
       { mkGoModule, go }:
-      mkGoModule {
+      mkGoModule rec {
         pname = "github.com/pkg/errors";
         version = "0.9.1";
-        hash = "sha256-mNfQtcrQmu3sNg/7IwiieKWOgFQOVVe2yXgKBpe/wZw=";
+        hash = "sha256-tBev5M7C4bEWqik7s7iAuR9k2Hct/pr8x4AbfFQUDEs=";
         nativeBuildInputs = [
           go
         ];
         postPatch = ''
-          rm Makefile
           export HOME=$(mktemp -d)
+          pushd ${pname}@v${version}
           go mod init github.com/pkg/errors
         '';
       }
@@ -371,7 +404,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/mattn/go-isatty";
         version = "0.0.20";
-        hash = "sha256-6sX3ZvuVi8/3DAU1+8zN9IUpUdtT2JqwxSGldXmywzw=";
+        hash = "sha256-33Q5mUDM+rWmh7maqdXFCOSq/UZTGTvRWbcezjhh1pk=";
         buildInputs = [
           goPackages."golang.org/x/sys"
         ];
@@ -382,7 +415,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/mattn/go-colorable";
         version = "0.1.14";
-        hash = "sha256-V32P6V2arwSQo5Uesps14tJPu9sQNq0OPb8ZvhJXJXM=";
+        hash = "sha256-yN+uZSpyCGbYX/bFLkupwEzENd6rAcPhzJs6UpHjIpo=";
         buildInputs = [
           goPackages."golang.org/x/sys"
           goPackages."github.com/mattn/go-isatty"
@@ -398,7 +431,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/coreos/go-systemd/v22";
         version = "22.5.0";
-        hash = "sha256-ztvSLbLaKUe/pNIzKhjkVhKOdk8C9Xwr6jZxizgjC+4=";
+        hash = "sha256-mi49ehvpmwsYmf/Q4o8YDeW819Kc7Xtnl5ZMNzJKROo=";
         buildInputs = [
           goPackages."github.com/godbus/dbus/v5"
           systemdLibs
@@ -410,7 +443,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/godbus/dbus/v5";
         version = "5.1.0";
-        hash = "sha256-JSPtmkGEStBEVrKGszeLCb7P38SzQKgMiDC3eDppXs0=";
+        hash = "sha256-RJoJHIOTemyJruLQWALAGh3Q7eskbowdtIoAKIktGgA=";
         buildInputs = [
           goPackages."golang.org/x/sys"
         ];
@@ -421,7 +454,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/google/go-cmp";
         version = "0.6.0";
-        hash = "sha256-qgra5jze4iPGP0JSTVeY5qV5AvEnEu39LYAuUCIkMtg=";
+        hash = "sha256-McFUWx7i9BfqK/usVDMjHffk1FzD5JrC682aqn7iCvQ=";
       }
     ) { };
     "github.com/Workiva/go-datastructures" = callPackage (
@@ -429,7 +462,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/Workiva/go-datastructures";
         version = "1.1.5";
-        hash = "sha256-p0swqWVvk9FTnrBM6PwtM+ffFWNxj8kdW+UjVcH7ZSY=";
+        hash = "sha256-ByUpvCaYzR0symTo3VwHja611RolIcg658wnXkwiaow=";
         buildInputs = [
           goPackages."github.com/stretchr/testify"
           goPackages."github.com/tinylib/msgp"
@@ -441,7 +474,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/tinylib/msgp";
         version = "1.2.5";
-        hash = "sha256-Cgw+BEGuiI+Cq40ojBuAGHZuYAQsPI5eoRaHfaYs6PQ=";
+        hash = "sha256-PKRKqmdG9GOUsCqpmUwfyA1ZitIXffpp1Bi4850HoWE=";
         buildInputs = [
           goPackages."github.com/philhofer/fwd"
           goPackages."golang.org/x/tools"
@@ -453,8 +486,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/philhofer/fwd";
         version = "1.1.3-0.20240916144458-20a13a1f6b7c";
-        rev = "20a13a1f6b7cb47a126dcb75152e21e1383bbaba";
-        hash = "sha256-cGx2/0QQay46MYGZuamFmU0TzNaFyaO+J7Ddzlr/3dI=";
+        hash = "sha256-CvoFUCSlDqVRe7UhkRCzNb8hkK0MZEZazkNFF25PRlw=";
       }
     ) { };
     "github.com/yuin/goldmark" = callPackage (
@@ -462,7 +494,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/yuin/goldmark";
         version = "1.7.8";
-        hash = "sha256-XXpz9CkA51e2HKWwOgiyqURBUKZIqcVmQ73HhmHo58c=";
+        hash = "sha256-KFr+Uy4bwbl0iQGiS4Ugk7HWXQNPIgt63+FuLtBqZMk=";
       }
     ) { };
     "github.com/google/go-cmdtest" = callPackage (
@@ -470,7 +502,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/google/go-cmdtest";
         version = "0.3.0";
-        hash = "sha256-l+aQ89PkKWUWhcZw2GaaAV6ZOdwD/vTUSxJ9sPVP0+8=";
+        hash = "sha256-y1y+WX9JAP+jb2Fq0coiN+I/D0kSdm3mx92Yz2jCS7g=";
         buildInputs = [
           goPackages."github.com/google/go-cmp"
           goPackages."github.com/google/renameio"
@@ -482,7 +514,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/google/renameio";
         version = "1.0.1";
-        hash = "sha256-RS3xKcImH4gP5c02aEzf3cIlo1kmkUge9rjbpLIlyOI=";
+        hash = "sha256-rLyPj/LwGwHNA22mD4BCQCsXUImlFhS57c/urhCGS8A=";
       }
     ) { };
     "github.com/stretchr/testify" = callPackage (
@@ -490,7 +522,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/stretchr/testify";
         version = "1.10.0";
-        hash = "sha256-BbS4P2ZkFPHkIf0FM5sK4CnSy4eKqhpoOwoNGPFtKzw=";
+        hash = "sha256-H0tGQrgyCFlEIAmKXiGe+FE4lCviTmS0uVRMLZGv2Ts=";
         buildInputs = [
           goPackages."github.com/davecgh/go-spew"
           goPackages."github.com/pmezard/go-difflib"
@@ -501,29 +533,31 @@ lib.makeScope newScope (
     ) { };
     "github.com/davecgh/go-spew" = callPackage (
       { mkGoModule }:
-      mkGoModule {
+      mkGoModule rec {
         pname = "github.com/davecgh/go-spew";
         version = "1.1.1";
-        hash = "sha256-nhzSUrE1fCkN0+RL04N4h8jWmRFPPPWbCuDc7Ss0akI=";
+        hash = "sha256-vXsaiAdWkniANW1oZs+8HSohzsrIvOzMjW4mZ1ujlOE=";
         nativeBuildInputs = [ go ];
         # no go.mod file
         postPatch = ''
           export HOME=$(mktemp -d)
+          pushd ${pname}@v${version}
           go mod init github.com/davecgh/go-spew
         '';
       }
     ) { };
     "github.com/pmezard/go-difflib" = callPackage (
       { mkGoModule }:
-      mkGoModule {
+      mkGoModule rec {
         pname = "github.com/pmezard/go-difflib";
         version = "1.0.0";
-        hash = "sha256-/FtmHnaGjdvEIKAJtrUfEhV7EVo5A/eYrtdnUkuxLDA=";
+        hash = "sha256-aI8R8DMtKiGoUjg4E40pddmWLAQx1UpEk6b+eF8++Bw=";
         nativeBuildInputs = [ go ];
         # no go.mod file
         postPatch = ''
           export HOME=$(mktemp -d)
-          go mod init github.com/davecgh/go-spew
+          pushd ${pname}@v${version}
+          go mod init github.com/pmezard/go-difflib
         '';
       }
     ) { };
@@ -532,7 +566,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/stretchr/objx";
         version = "0.5.2";
-        hash = "sha256-VKYxrrFb1nkX6Wu3tE5DoP9+fCttwSl9pgLN6567nck=";
+        hash = "sha256-t9Qmp7CsRMmZM0a+/OZHkrxqvxKdcP6vuVJT3HuBKkE=";
         buildInputs = [
           # goPackages."github.com/stretchr/testify" # circular dependency
         ];
@@ -542,17 +576,11 @@ lib.makeScope newScope (
       {
         mkGoModule,
         goPackages,
-        fetchFromGitHub,
       }:
-      mkGoModule rec {
+      mkGoModule {
         pname = "gopkg.in/yaml.v3";
         version = "3.0.1";
-        src = fetchFromGitHub {
-          owner = "go-yaml";
-          repo = "yaml";
-          rev = "v${version}";
-          hash = "sha256-FqL9TKYJ0XkNwJFnq9j0VvJ5ZUU1RvH/52h/f5bkYAU=";
-        };
+        hash = "sha256-+SbWxVjEOYP6Gj4bsTDvb7op6ckowCsIQBLWlcMbc7s=";
         buildInputs = [
           goPackages."gopkg.in/check.v1"
         ];
@@ -562,17 +590,11 @@ lib.makeScope newScope (
       {
         mkGoModule,
         goPackages,
-        fetchFromGitHub,
       }:
       mkGoModule {
         pname = "gopkg.in/check.v1";
         version = "1.0.0-20201130134442-10cb98267c6c";
-        src = fetchFromGitHub {
-          owner = "go-check";
-          repo = "check";
-          rev = "10cb98267c6cb43ea9cd6793f29ff4089c306974";
-          hash = "sha256-VlIpM2r/OD+kkyItn6vW35dyc0rtkJufA93rjFyzncs=";
-        };
+        hash = "sha256-wMYqwM7tB5qlEPBwysccGrggEy+Aq7kJmXQzHKNlGYs=";
         buildInputs = [
           goPackages."github.com/kr/pretty"
         ];
@@ -583,7 +605,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/kr/pretty";
         version = "0.3.1";
-        hash = "sha256-DlER7XM+xiaLjvebcIPiB12oVNjyZHuJHoRGITzzpKU=";
+        hash = "sha256-dV1DuSQGY4RlXJKwdkmiOwK7CqCEBc1LwR8EeyJPlxo=";
         buildInputs = [
           goPackages."github.com/kr/text"
           goPackages."github.com/rogpeppe/go-internal"
@@ -595,7 +617,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/kr/text";
         version = "0.2.0";
-        hash = "sha256-fadcWxZOORv44oak3jTxm6YcITcFxdGt4bpn869HxUE=";
+        hash = "sha256-8QJ+QQwMigZNVMeyw8Pvt/IkFeY7P1EuHfCFYENFgiY=";
         buildInputs = [
           goPackages."github.com/creack/pty"
         ];
@@ -606,7 +628,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "github.com/creack/pty";
         version = "1.1.24";
-        hash = "sha256-RTjW1MrV0Hje6eDCsf+IVQHM/gec5REaXznvsxz8xHs=";
+        hash = "sha256-oF7q5QQ5FLD9Wh8Dl+Gal6AoohdfFLKqNrjUGk2gv80=";
       }
     ) { };
   }

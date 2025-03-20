@@ -24,6 +24,10 @@ in
       pname = "fsnotify";
       inherit (base) version src;
 
+      postPatch = ''
+        cd ${base.pname}@v${base.version}
+      '';
+
       buildInputs = [
         goPackages."golang.org/x/sys"
       ];
