@@ -610,8 +610,25 @@ lib.makeScope newScope (
       }
     ) { };
   }
-  // (lib.packagesFromDirectoryRecursive {
-    inherit (final) callPackage;
-    directory = ./go-packages;
-  })
+  // (
+    let
+      scanDir' =
+        callPackage: root: prefixToAdd:
+        let
+          scanDir'' = scanDir' callPackage;
+          dir = builtins.readDir root;
+          processChild = name: typ:
+            if typ == "regular" && name == "package.nix" then
+              [ (lib.nameValuePair prefixToAdd (root + "/${name}")) ]
+            else if typ == "directory" && !(builtins.pathExists (root + "/.skip-tree")) then
+              scanDir'' (root + "/${name}") (prefixToAdd + "${if prefixToAdd == "" then "" else "/"}${name}")
+            else
+              [ ];
+          processChildByName = name: processChild name dir.${name};
+        in
+        builtins.concatMap processChildByName (builtins.attrNames dir);
+      scanDir = callPackage: root: builtins.listToAttrs (scanDir' callPackage root "");
+    in
+    scanDir final.callPackage ./go-packages
+  )
 )
