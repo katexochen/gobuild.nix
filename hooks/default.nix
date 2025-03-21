@@ -49,17 +49,6 @@ in
     } ./configure-go-cache.sh
   ) { };
 
-  configureGoVendor = callPackage (
-    { }:
-    makeSetupHook {
-      name = "configure-go-vendor-hook";
-      substitutions = {
-        go = goExe;
-        go_version = go.version;
-      };
-    } ./configure-go-vendor.sh
-  ) { };
-
   configureGoProxy = callPackage (
     { }:
     makeSetupHook {
@@ -99,16 +88,6 @@ in
         go = goExe;
       };
     } ./build-go-cache-output-setup-hook.sh
-  ) { };
-
-  buildGoVendorOutputSetupHook = callPackage (
-    { }:
-    makeSetupHook {
-      name = "build-go-vendor-output-setup-hook";
-      substitutions = {
-        go = goExe;
-      };
-    } ./build-go-vendor-output-setup-hook.sh
   ) { };
 
   buildGoProxyOutputSetupHook = callPackage (
