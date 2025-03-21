@@ -14,10 +14,6 @@ stdenv.mkDerivation (finalAttrs: {
     hash = "sha256-U4L7DSs/h0GEH/m9jfLHNzSNUlYdZigiH5e57+o5hJI=";
   };
 
-  postPatch = ''
-    cd ${finalAttrs.pname}@v${finalAttrs.version}
-  '';
-
   nativeBuildInputs = [
     goPackages.hooks.makeGoDependency
   ];
