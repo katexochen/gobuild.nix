@@ -66,12 +66,6 @@ lib.makeScope newScope (
           ] ++ nativeBuildInputs;
           propagatedBuildInputs = buildInputs;
           dontInstall = true;
-
-          postPatch = ''
-            ppath=${pname}@v${version}
-            ppath=$(echo "$ppath" | sed 's/\([A-Z]\)/!\L\1/g' | sed 's/!!/!/g')
-            pushd "$ppath"
-          '';
         }
         // args'
       )
@@ -385,7 +379,7 @@ lib.makeScope newScope (
     ) { };
     "github.com/pkg/errors" = callPackage (
       { mkGoModule, go }:
-      mkGoModule rec {
+      mkGoModule {
         pname = "github.com/pkg/errors";
         version = "0.9.1";
         hash = "sha256-tBev5M7C4bEWqik7s7iAuR9k2Hct/pr8x4AbfFQUDEs=";
@@ -394,7 +388,6 @@ lib.makeScope newScope (
         ];
         postPatch = ''
           export HOME=$(mktemp -d)
-          pushd ${pname}@v${version}
           go mod init github.com/pkg/errors
         '';
       }
@@ -533,7 +526,7 @@ lib.makeScope newScope (
     ) { };
     "github.com/davecgh/go-spew" = callPackage (
       { mkGoModule }:
-      mkGoModule rec {
+      mkGoModule {
         pname = "github.com/davecgh/go-spew";
         version = "1.1.1";
         hash = "sha256-vXsaiAdWkniANW1oZs+8HSohzsrIvOzMjW4mZ1ujlOE=";
@@ -541,14 +534,13 @@ lib.makeScope newScope (
         # no go.mod file
         postPatch = ''
           export HOME=$(mktemp -d)
-          pushd ${pname}@v${version}
           go mod init github.com/davecgh/go-spew
         '';
       }
     ) { };
     "github.com/pmezard/go-difflib" = callPackage (
       { mkGoModule }:
-      mkGoModule rec {
+      mkGoModule {
         pname = "github.com/pmezard/go-difflib";
         version = "1.0.0";
         hash = "sha256-aI8R8DMtKiGoUjg4E40pddmWLAQx1UpEk6b+eF8++Bw=";
@@ -556,7 +548,6 @@ lib.makeScope newScope (
         # no go.mod file
         postPatch = ''
           export HOME=$(mktemp -d)
-          pushd ${pname}@v${version}
           go mod init github.com/pmezard/go-difflib
         '';
       }

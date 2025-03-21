@@ -16,6 +16,7 @@ in
     makeSetupHook {
       name = "make-go-dependency-hook";
       propagatedBuildInputs = [
+        hooks.switchToGoProxySourceHook
         hooks.configureGoProxy
         hooks.configureGoCache
         hooks.buildGo
@@ -98,5 +99,12 @@ in
         go = goExe;
       };
     } ./build-go-proxy-output-setup-hook.sh
+  ) { };
+
+  switchToGoProxySourceHook = callPackage (
+    { }:
+    makeSetupHook {
+      name = "switch-to-go-proxy-source-hook";
+    } ./switch-to-go-proxy-source.sh
   ) { };
 }
