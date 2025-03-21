@@ -65,7 +65,6 @@ lib.makeScope newScope (
             hooks.makeGoDependency
           ] ++ nativeBuildInputs;
           propagatedBuildInputs = buildInputs;
-          dontInstall = true;
         }
         // args'
       )
