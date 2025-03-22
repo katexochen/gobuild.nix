@@ -58,23 +58,22 @@ func Package(importPath, version string, override bool) error {
 
 	log.Printf("Packaging %s@%s\n", importPath, version)
 
-	src, err := FetchFromGitHubFromImportpath(importPath)
-	if err != nil {
-		return fmt.Errorf("creating src from import path: %w", err)
-	}
-	src.Tag = version
 	version = strings.TrimPrefix(version, "v")
+	src := FetchFromGoProxy{
+		ImportPath: importPath,
+		Version:    version,
+	}
 
-	src.Hash, src.storePath, err = fetch(src)
+	src, err := prefetchGoProxySimple(src)
 	if err != nil {
 		return fmt.Errorf("fetching '%s@%s': %w", importPath, version, err)
 	}
 
 	pkg := Pkg{
 		Imports: []string{
-			"fetchFromGitHub",
-			"stdenv",
+			"fetchFromGoProxy",
 			"goPackages",
+			"stdenv",
 		},
 		ImportPath: importPath,
 		Version:    version,
@@ -150,7 +149,7 @@ type Pkg struct {
 	Imports               []string
 	ImportPath            string
 	Version               string
-	Source                FetchFromGitHub
+	Source                FetchFromGoProxy
 	PostPatch             []string
 	NativeBuildInputs     []string
 	PropagatedBuildInputs []string
@@ -170,100 +169,133 @@ func (p Pkg) MarshalText() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.WriteString(fmt.Sprintf("\nsrc = %s;\n\n", src))
+	b.WriteString(fmt.Sprintf("\nsrc = %s;\n", src))
 	if len(p.PostPatch) > 0 {
-		b.WriteString("postPatch = ''\n")
+		b.WriteString("\npostPatch = ''\n")
 		for _, pf := range p.PostPatch {
 			b.WriteString(fmt.Sprintf("%s\n", pf))
 		}
-		b.WriteString("'';\n\n")
+		b.WriteString("'';\n")
 	}
-	b.WriteString("nativeBuildInputs = [\n")
+	b.WriteString("\nnativeBuildInputs = [\n")
 	for _, nbi := range p.NativeBuildInputs {
 		b.WriteString(fmt.Sprintf("%s\n", nbi))
 	}
-	b.WriteString("];\n\n")
+	b.WriteString("];\n")
 	if len(p.PropagatedBuildInputs) > 0 {
-		b.WriteString("propagatedBuildInputs = [\n")
+		b.WriteString("\npropagatedBuildInputs = [\n")
 		for _, pbi := range p.PropagatedBuildInputs {
 			b.WriteString(fmt.Sprintf("%s\n", pbi))
 		}
-		b.WriteString("];\n\n")
+		b.WriteString("];\n")
 	}
 	b.WriteString("})")
 	return []byte(b.String()), nil
 }
 
-type FetchFromGitHub struct {
-	Owner string
-	Repo  string
-	Rev   string
-	Tag   string
-	Hash  string
+type FetchFromGoProxy struct {
+	ImportPath string
+	Version    string
+	Hash       string
 
 	storePath string
 }
 
-func FetchFromGitHubFromImportpath(importPath string) (FetchFromGitHub, error) {
-	parts := strings.Split(importPath, "/")
-	return FetchFromGitHub{
-		Owner: parts[1],
-		Repo:  parts[2],
-	}, nil
-}
-
-func (f FetchFromGitHub) MarshalText() ([]byte, error) {
+func (f FetchFromGoProxy) MarshalText() ([]byte, error) {
 	b := strings.Builder{}
-	b.WriteString("fetchFromGitHub {\n")
-	b.WriteString(fmt.Sprintf("owner = %q;\n", f.Owner))
-	b.WriteString(fmt.Sprintf("repo = %q;\n", f.Repo))
-	if f.Tag != "" {
-		b.WriteString("tag = \"v${finalAttrs.version}\";\n")
-	} else {
-		b.WriteString(fmt.Sprintf("rev = %q;\n", f.Rev))
-	}
+	b.WriteString("fetchFromGoProxy {\n")
+	b.WriteString(fmt.Sprintf("importPath = %q;\n", f.ImportPath))
+	b.WriteString("version = \"v${finalAttrs.version}\";\n")
 	b.WriteString(fmt.Sprintf("hash = %q;\n", f.Hash))
 	b.WriteString("}")
 	return []byte(b.String()), nil
 }
 
-func (f FetchFromGitHub) URL() string {
-	rev := f.Tag
-	if rev == "" {
-		rev = f.Rev
+func prefetchGoProxySimple(fod FetchFromGoProxy) (FetchFromGoProxy, error) {
+	tmpDir, err := os.MkdirTemp("", "fetchFromGoProxy.*")
+	if err != nil {
+		return FetchFromGoProxy{}, err
 	}
-	return fmt.Sprintf("https://github.com/%s/%s/archive/%s.tar.gz", f.Owner, f.Repo, rev)
-}
+	fod.storePath = fmt.Sprintf("%s/%s@v%s", tmpDir, fod.ImportPath, fod.Version)
+	tmpHomeDir, err := os.MkdirTemp("", "home.*")
+	if err != nil {
+		return FetchFromGoProxy{}, err
+	}
+	defer os.RemoveAll(tmpHomeDir)
 
-type URLer interface {
-	URL() string
-}
-
-func fetch(urler URLer) (hash, storePath string, retErr error) {
-	cmd := exec.Command("nix-prefetch-url", "--print-path", "--unpack", urler.URL())
-	output, err := cmd.Output()
+	// go mod download the package
+	cmd := exec.Command("go", "mod", "download", fmt.Sprintf("%s@v%s", fod.ImportPath, fod.Version))
+	cmd.Dir = tmpDir
+	cmd.Env = append(cmd.Env, fmt.Sprintf("GOMODCACHE=%s", tmpDir))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("HOME=%s", tmpHomeDir))
 	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		return "", "", fmt.Errorf("executing nix-prefetch-url: %s", exitErr.Stderr)
+	if out, err := cmd.CombinedOutput(); errors.As(err, &exitErr) {
+		return FetchFromGoProxy{}, fmt.Errorf("go mod download: %s, %v", out, err)
 	} else if err != nil {
-		return "", "", err
+		return FetchFromGoProxy{}, fmt.Errorf("go mod download: %v", err)
 	}
 
-	hash, storePath, ok := strings.Cut(string(output), "\n")
-	if !ok {
-		return "", "", fmt.Errorf("splitting nix-prefetch-url output: %s", string(output))
+	// Do same cleanup as fetchFromGoProxy
+	if err := os.RemoveAll(filepath.Join(tmpDir, "cache/download/sumdb")); err != nil {
+		return FetchFromGoProxy{}, err
 	}
-	storePath = strings.TrimSpace(storePath)
 
-	cmd = exec.Command("nix-hash", "--sri", "--type", "sha256", storePath)
-	sriHash, err := cmd.Output()
+	// Calculate the hash
+	cmd = exec.Command("nix-hash", "--type", "sha256", tmpDir)
+	hash, err := cmd.Output()
 	if errors.As(err, &exitErr) {
-		return "", "", fmt.Errorf("executing nix-hash: %s", exitErr.Stderr)
+		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %s, %v", exitErr.Stderr, err)
 	} else if err != nil {
-		return "", "", err
+		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %v", err)
+	}
+	hash = bytes.TrimSpace(hash)
+
+	// Convert the hash to SRI
+	cmd = exec.Command("nix-hash", "--type", "sha256", "--to-sri", string(hash))
+	sri, err := cmd.Output()
+	if errors.As(err, &exitErr) {
+		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %s", exitErr.Stderr)
+	} else if err != nil {
+		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %v", err)
 	}
 
-	return strings.TrimSpace(string(sriHash)), storePath, nil
+	fod.Hash = strings.TrimSpace(string(sri))
+	return fod, nil
+}
+
+func prefetchGoProxy(fod FetchFromGoProxy) (FetchFromGoProxy, error) {
+	// Create a temporary file
+	fodFile, err := os.CreateTemp("", "fetchFromGoProxy.*.nix")
+	if err != nil {
+		return FetchFromGoProxy{}, err
+	}
+	defer fodFile.Close()
+	defer os.Remove(fodFile.Name())
+
+	// Marshal the FetchFromGoProxy to nix expression
+	fodBytes, err := fod.MarshalText()
+	if err != nil {
+		return FetchFromGoProxy{}, err
+	}
+
+	// Write the nix expression to the file
+	if _, err := fodFile.Write(fodBytes); err != nil {
+		return FetchFromGoProxy{}, err
+	}
+
+	// Create a second temporary "entrypoint" file
+	entrypointFile, err := os.CreateTemp("", "entrypoint.*.nix")
+	if err != nil {
+		return FetchFromGoProxy{}, err
+	}
+	defer entrypointFile.Close()
+	defer os.Remove(entrypointFile.Name())
+
+	// The entry point should take some pinned flake reference form the local flake that
+	// contains the fetchFromGoProxy function.
+	// TODO
+
+	return fod, nil
 }
 
 func nixfmt(b []byte) []byte {
