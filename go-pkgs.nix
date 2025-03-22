@@ -619,7 +619,7 @@ lib.makeScope newScope (
           dir = builtins.readDir root;
           processChild = name: typ:
             if typ == "regular" && name == "package.nix" then
-              [ (lib.nameValuePair prefixToAdd (root + "/${name}")) ]
+              [ (lib.nameValuePair prefixToAdd (callPackage (root + "/${name}") { })) ]
             else if typ == "directory" && !(builtins.pathExists (root + "/.skip-tree")) then
               scanDir'' (root + "/${name}") (prefixToAdd + "${if prefixToAdd == "" then "" else "/"}${name}")
             else
