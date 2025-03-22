@@ -58,7 +58,8 @@ lib.makeScope newScope (
         {
           inherit pname version;
           src = fetchFromGoProxy {
-            inherit pname hash;
+            inherit hash;
+            importPath = pname;
             version = "v${version}";
           };
           nativeBuildInputs = [
@@ -74,23 +75,23 @@ lib.makeScope newScope (
     fetchFromGoProxy = callPackage (
       { runCommandNoCC, go }:
       {
-        pname,
+        importPath,
         version,
         hash,
       }:
-      runCommandNoCC "goproxy-${pname}-${version}"
+      runCommandNoCC "goproxy-${importPath}-${version}"
         {
           buildInputs = [ go ];
           outputHashMode = "recursive";
           outputHashAlgo = "sha256";
           outputHash = hash;
-          passthru = { inherit pname version; };
+          passthru = { inherit importPath version; };
         }
         ''
           export HOME=$TMPDIR
           export GOMODCACHE=$out
           export GOPROXY=https://proxy.golang.org
-          go mod download ${pname}@${version}
+          go mod download ${importPath}@${version}
         ''
     ) { };
 
@@ -106,42 +107,42 @@ lib.makeScope newScope (
       let
         srcs = {
           "golang.org/x/crypto" = fetchFromGoProxy {
-            pname = "golang.org/x/crypto";
+            importPath = "golang.org/x/crypto";
             version = "v0.32.0";
             hash = "sha256-VYv7SMxdSrTDGZRzvBTg80j/0Vr5dgZxL6EJG6fCVrg=";
           };
           "golang.org/x/exp" = fetchFromGoProxy {
-            pname = "golang.org/x/exp";
+            importPath = "golang.org/x/exp";
             version = "v0.0.0-20250106191152-7588d65b2ba8";
             hash = "sha256-fv32GYy8Y7yrPoqwPtrH1LpH33vezmfzvzSNsnwam18=";
           };
           "golang.org/x/mod" = fetchFromGoProxy {
-            pname = "golang.org/x/mod";
+            importPath = "golang.org/x/mod";
             version = "v0.22.0";
             hash = "sha256-8M6tZF3YvI77rvZZK66udF/zsMfRs2NUhvLcGxE1/j4=";
           };
           "golang.org/x/net" = fetchFromGoProxy {
-            pname = "golang.org/x/net";
+            importPath = "golang.org/x/net";
             version = "v0.34.0";
             hash = "sha256-zyXIkUJZV1Y25KTsjG+sGeWvV/TeqWycTMzfqYOESS0=";
           };
           "golang.org/x/telemetry" = fetchFromGoProxy {
-            pname = "golang.org/x/telemetry";
+            importPath = "golang.org/x/telemetry";
             version = "v0.0.0-20250117155846-04cd7bae618c";
             hash = "sha256-KuhoHiV8U098SD124Py6U70QJPanIUhVBWaiLJ+RPrw=";
           };
           "golang.org/x/term" = fetchFromGoProxy {
-            pname = "golang.org/x/term";
+            importPath = "golang.org/x/term";
             version = "v0.28.0";
             hash = "sha256-Ri1Qrlq0OYnqmfsH7UoFK+iblEOwnM4WKQYJzAIcavA=";
           };
           "golang.org/x/text" = fetchFromGoProxy {
-            pname = "golang.org/x/text";
+            importPath = "golang.org/x/text";
             version = "v0.21.0";
             hash = "sha256-1YQLLyVOeEHausyIS4x654nCr3auzSt40ZruL8Hf9HI=";
           };
           "golang.org/x/tools" = fetchFromGoProxy {
-            pname = "golang.org/x/tools";
+            importPath = "golang.org/x/tools";
             version = "v0.29.0";
             hash = "sha256-jlxlV8/yr/cXyVC0x3lo8eYwqbfRO+29oiT3+7mJbKE=";
           };
