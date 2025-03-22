@@ -13,14 +13,14 @@ rewriteGoMod() {
   echo "go @go_version@" >> go.mod
 
    for dep in ${NIX_GO_PROXY}; do
-    # Input form is <pname>@v<version>:<storepath>
-    local pname="${dep%%@v*}"
+    # Input form is <importPath>@v<version>:<storepath>
+    local importPath="${dep%%@v*}"
     local version="${dep##*@}"
     version="${version%%:*}"
-    echo "adding ${pname}@${version} to go.mod"
-    echo "require ${pname} ${version}" >> go.mod
+    echo "adding ${importPath}@${version} to go.mod"
+    echo "require ${importPath} ${version}" >> go.mod
     # Replace will also affect transitive requires.
-    echo "replace ${pname} => ${pname} ${version}" >> go.mod
+    echo "replace ${importPath} => ${importPath} ${version}" >> go.mod
   done
 
   @go@ mod tidy
@@ -41,13 +41,13 @@ goConfigureProxy() {
   proxyDir=$(mktemp -d)
 
   for dep in ${NIX_GO_PROXY}; do
-    # Input form is <pname>@v<version>:<storepath>
+    # Input form is <importPath>@v<version>:<storepath>
     local storepath="${dep#*:}"
-    local pname="${dep%%@v*}"
+    local importPath="${dep%%@v*}"
 
     # Upper case package names are escaped as '!<lowercase>' in the proxy protocol,
     # so we need to convert to get the right path in the proxy directory.
-    ppath=${pname}
+    ppath=${importPath}
     ppath=$(echo "$ppath" | sed 's/\([A-Z]\)/!\L\1/g' | sed 's/!!/!/g')
 
     # Add the dependency to the GOPROXY dir

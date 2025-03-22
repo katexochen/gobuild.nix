@@ -9,7 +9,7 @@ stdenv.mkDerivation (finalAttrs: {
   version = "1.13.1";
 
   src = fetchFromGoProxy {
-    pname = "github.com/rogpeppe/go-internal";
+    importPath = "github.com/rogpeppe/go-internal";
     version = "v${finalAttrs.version}";
     hash = "sha256-U4L7DSs/h0GEH/m9jfLHNzSNUlYdZigiH5e57+o5hJI=";
   };
