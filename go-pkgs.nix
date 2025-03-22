@@ -586,7 +586,7 @@ lib.makeScope newScope (
         hash = "sha256-DlER7XM+xiaLjvebcIPiB12oVNjyZHuJHoRGITzzpKU=";
         buildInputs = [
           goPackages."github.com/kr/text"
-          goPackages."github.com".rogpeppe.go-internal
+          goPackages."github.com/rogpeppe/go-internal"
         ];
       }
     ) { };
@@ -617,7 +617,8 @@ lib.makeScope newScope (
         let
           scanDir'' = scanDir' callPackage;
           dir = builtins.readDir root;
-          processChild = name: typ:
+          processChild =
+            name: typ:
             if typ == "regular" && name == "package.nix" then
               [ (lib.nameValuePair prefixToAdd (callPackage (root + "/${name}") { })) ]
             else if typ == "directory" && !(builtins.pathExists (root + "/.skip-tree")) then
