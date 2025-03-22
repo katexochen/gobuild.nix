@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +19,9 @@ import (
 )
 
 const goPkgsPath = "go-packages"
+
+//go:embed eval-fetch-go-proxy.nix
+var evalFetchGoProxyNix []byte
 
 func main() {
 	cmd := newRootCmd()
@@ -64,7 +69,7 @@ func Package(importPath, version string, override bool) error {
 		Version:    version,
 	}
 
-	src, err := prefetchGoProxySimple(src)
+	src, err := prefetchGoProxy(src)
 	if err != nil {
 		return fmt.Errorf("fetching '%s@%s': %w", importPath, version, err)
 	}
@@ -83,12 +88,15 @@ func Package(importPath, version string, override bool) error {
 		},
 	}
 
-	modFile, err := readMod(path.Join(src.storePath, "go.mod"))
-	if errors.Is(err, os.ErrNotExist) {
+	modFile, err := readMod(src.storePath)
+	var noGoModErr NoGoModError
+	if errors.As(err, &noGoModErr) {
 		pkg.PostPatch = []string{
 			"export HOME=$(pwd)",
 			fmt.Sprintf("go mod init %s", importPath),
 		}
+		pkg.NativeBuildInputs = append(pkg.NativeBuildInputs, "go")
+		pkg.Imports = append(pkg.Imports, "go")
 	} else if err != nil {
 		return fmt.Errorf("reading go.mod: %w", err)
 	} else {
@@ -211,91 +219,56 @@ func (f FetchFromGoProxy) MarshalText() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
-func prefetchGoProxySimple(fod FetchFromGoProxy) (FetchFromGoProxy, error) {
-	tmpDir, err := os.MkdirTemp("", "fetchFromGoProxy.*")
+func prefetchGoProxy(fetcher FetchFromGoProxy) (FetchFromGoProxy, error) {
+	fetcherFile, err := os.CreateTemp("", "fetchFromGoProxy.*.nix")
 	if err != nil {
 		return FetchFromGoProxy{}, err
 	}
-	fod.storePath = fmt.Sprintf("%s/%s@v%s", tmpDir, fod.ImportPath, fod.Version)
-	tmpHomeDir, err := os.MkdirTemp("", "home.*")
-	if err != nil {
-		return FetchFromGoProxy{}, err
-	}
-	defer os.RemoveAll(tmpHomeDir)
+	defer fetcherFile.Close()
+	defer os.Remove(fetcherFile.Name())
 
-	// go mod download the package
-	cmd := exec.Command("go", "mod", "download", fmt.Sprintf("%s@v%s", fod.ImportPath, fod.Version))
-	cmd.Dir = tmpDir
-	cmd.Env = append(cmd.Env, fmt.Sprintf("GOMODCACHE=%s", tmpDir))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("HOME=%s", tmpHomeDir))
+	if _, err := fetcherFile.Write(evalFetchGoProxyNix); err != nil {
+		return FetchFromGoProxy{}, err
+	}
+
+	// Invoke nix-build to get the hash mismatch error
+	args := []string{}
+	args = append(args, fetcherFile.Name())
+	args = append(args, "--no-build-output") // Little hardening so we don't match on some build output.
+	args = append(args, "--argstr", "importPath", fetcher.ImportPath)
+	args = append(args, "--argstr", "version", fmt.Sprintf("v%s", fetcher.Version))
+	cmd := exec.Command("nix-build", args...)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return FetchFromGoProxy{}, fmt.Errorf("expected error, got success")
+	}
+
+	hash, err := FODHashFromFetcherFailure(string(out))
+	if err != nil {
+		return FetchFromGoProxy{}, fmt.Errorf("parsing fetcher failure: %w", err)
+	}
+	fetcher.Hash = strings.TrimSpace(hash)
+
+	// Invoke nix-build again to get the store path
+	args = []string{}
+	args = append(args, fetcherFile.Name())
+	args = append(args, "--no-build-output")
+	args = append(args, "--no-out-link")
+	args = append(args, "--argstr", "importPath", fetcher.ImportPath)
+	args = append(args, "--argstr", "version", fmt.Sprintf("v%s", fetcher.Version))
+	args = append(args, "--argstr", "hash", fetcher.Hash)
+	cmd = exec.Command("nix-build", args...)
+	out, err = cmd.Output()
 	var exitErr *exec.ExitError
-	if out, err := cmd.CombinedOutput(); errors.As(err, &exitErr) {
-		return FetchFromGoProxy{}, fmt.Errorf("go mod download: %s, %v", out, err)
-	} else if err != nil {
-		return FetchFromGoProxy{}, fmt.Errorf("go mod download: %v", err)
-	}
-
-	// Do same cleanup as fetchFromGoProxy
-	if err := os.RemoveAll(filepath.Join(tmpDir, "cache/download/sumdb")); err != nil {
-		return FetchFromGoProxy{}, err
-	}
-
-	// Calculate the hash
-	cmd = exec.Command("nix-hash", "--type", "sha256", tmpDir)
-	hash, err := cmd.Output()
 	if errors.As(err, &exitErr) {
-		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %s, %v", exitErr.Stderr, err)
+		return FetchFromGoProxy{}, fmt.Errorf("fetching store path: %s", exitErr.Stderr)
 	} else if err != nil {
-		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %v", err)
+		return FetchFromGoProxy{}, fmt.Errorf("fetching store path: %w", err)
 	}
-	hash = bytes.TrimSpace(hash)
+	fetcher.storePath = strings.TrimSpace(string(out))
+	log.Printf("Fetched %s", fetcher.storePath)
 
-	// Convert the hash to SRI
-	cmd = exec.Command("nix-hash", "--type", "sha256", "--to-sri", string(hash))
-	sri, err := cmd.Output()
-	if errors.As(err, &exitErr) {
-		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %s", exitErr.Stderr)
-	} else if err != nil {
-		return FetchFromGoProxy{}, fmt.Errorf("nix-hash: %v", err)
-	}
-
-	fod.Hash = strings.TrimSpace(string(sri))
-	return fod, nil
-}
-
-func prefetchGoProxy(fod FetchFromGoProxy) (FetchFromGoProxy, error) {
-	// Create a temporary file
-	fodFile, err := os.CreateTemp("", "fetchFromGoProxy.*.nix")
-	if err != nil {
-		return FetchFromGoProxy{}, err
-	}
-	defer fodFile.Close()
-	defer os.Remove(fodFile.Name())
-
-	// Marshal the FetchFromGoProxy to nix expression
-	fodBytes, err := fod.MarshalText()
-	if err != nil {
-		return FetchFromGoProxy{}, err
-	}
-
-	// Write the nix expression to the file
-	if _, err := fodFile.Write(fodBytes); err != nil {
-		return FetchFromGoProxy{}, err
-	}
-
-	// Create a second temporary "entrypoint" file
-	entrypointFile, err := os.CreateTemp("", "entrypoint.*.nix")
-	if err != nil {
-		return FetchFromGoProxy{}, err
-	}
-	defer entrypointFile.Close()
-	defer os.Remove(entrypointFile.Name())
-
-	// The entry point should take some pinned flake reference form the local flake that
-	// contains the fetchFromGoProxy function.
-	// TODO
-
-	return fod, nil
+	return fetcher, nil
 }
 
 func nixfmt(b []byte) []byte {
@@ -311,15 +284,84 @@ func nixfmt(b []byte) []byte {
 	return out
 }
 
-func readMod(modpath string) (*modfile.File, error) {
-	modBytes, err := os.ReadFile(modpath)
+type NoGoModError struct {
+	path string
+}
+
+func (e NoGoModError) Error() string {
+	return fmt.Sprintf("no go.mod found in %q", e.path)
+}
+
+func readMod(storePath string) (*modfile.File, error) {
+	dirEntries, err := os.ReadDir(storePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading store path %q: %w", storePath, err)
+	}
+	if len(dirEntries) != 2 || !dirEntries[0].IsDir() || !dirEntries[1].IsDir() {
+		return nil, fmt.Errorf("expected two directories in src fetched with fetchFromGoProxy, got %d", len(dirEntries))
+	}
+	var modPath string
+	if dirEntries[0].Name() == "cache" {
+		modPath = dirEntries[1].Name()
+	} else {
+		if dirEntries[1].Name() != "cache" {
+			return nil, fmt.Errorf("expected one directory to be named 'cache', got %q, %q", dirEntries[0].Name(), dirEntries[1].Name())
+		}
+		modPath = dirEntries[0].Name()
+	}
+	for {
+		dirEntries, err := os.ReadDir(filepath.Join(storePath, modPath))
+		if err != nil {
+			return nil, fmt.Errorf("reading %q: %w", modPath, err)
+		}
+		if len(dirEntries) != 1 {
+			break
+		}
+		if !dirEntries[0].IsDir() {
+			break
+		}
+		modPath = filepath.Join(modPath, dirEntries[0].Name())
+	}
+	modPath = filepath.Join(storePath, modPath, "go.mod")
+	if _, err := os.Stat(modPath); errors.Is(err, os.ErrNotExist) {
+		return nil, NoGoModError{path: storePath}
+	} else if err != nil {
+		return nil, fmt.Errorf("reading go.mod: %w", err)
 	}
 
-	mod, err := modfile.Parse("go.mod", modBytes, nil)
+	modBytes, err := os.ReadFile(modPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading go.mod from %q: %w", modPath, err)
+	}
+
+	mod, err := modfile.Parse(modPath, modBytes, nil)
 	if err != nil {
 		return nil, err
 	}
 	return mod, nil
+}
+
+var specifiedGotReg = regexp.MustCompile(`specified: +(.*)\n\s+got: +(.*)`)
+
+func FODHashFromFetcherFailure(failure string) (string, error) {
+	// Ensure there is only one match
+	matches := specifiedGotReg.FindAllStringSubmatch(failure, -1)
+	if len(matches) != 1 {
+		return "", fmt.Errorf("expected one match, got %d", len(matches))
+	}
+
+	// Ensure there are two groups
+	if len(matches[0]) != 3 {
+		return "", fmt.Errorf("expected two groups, got %d", len(matches[0]))
+	}
+
+	if matches[0][1] != "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" {
+		return "", fmt.Errorf("expected first group to be 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', got %q", matches[0][1])
+	}
+
+	if len(matches[0][2]) != 51 {
+		return "", fmt.Errorf("expected second group to be 51 characters long, got %d: %q", len(matches[0][2]), matches[0][2])
+	}
+
+	return matches[0][2], nil
 }
