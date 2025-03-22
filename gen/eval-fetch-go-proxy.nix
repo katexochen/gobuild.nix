@@ -30,6 +30,8 @@ let
         export GOMODCACHE=$out
         export GOPROXY=https://proxy.golang.org
         go mod download ${importPath}@${version}
+        # Remove the sumdb shards downloaded by go mod download, they are not reproducible.
+        rm -r $GOMODCACHE/cache/download/sumdb
       ''
   ) { };
 in
