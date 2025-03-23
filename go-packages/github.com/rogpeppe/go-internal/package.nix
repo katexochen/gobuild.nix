@@ -11,7 +11,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGoProxy {
     importPath = "github.com/rogpeppe/go-internal";
     version = "v${finalAttrs.version}";
-    hash = "sha256-U4L7DSs/h0GEH/m9jfLHNzSNUlYdZigiH5e57+o5hJI=";
+    hash = "sha256-lalIHhGvG9tARO4IycqAQmpAlc/uhdnn7NNt3pCfV5g=";
   };
 
   nativeBuildInputs = [
