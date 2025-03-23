@@ -88,42 +88,42 @@ lib.makeScope newScope (
           "golang.org/x/crypto" = fetchFromGoProxy {
             importPath = "golang.org/x/crypto";
             version = "v0.32.0";
-            hash = "sha256-VYv7SMxdSrTDGZRzvBTg80j/0Vr5dgZxL6EJG6fCVrg=";
+            hash = "sha256-+cMpGGiaNKSVb0P/CSSZtxBNc2lZnivzD2ClIwlImEY=";
           };
           "golang.org/x/exp" = fetchFromGoProxy {
             importPath = "golang.org/x/exp";
             version = "v0.0.0-20250106191152-7588d65b2ba8";
-            hash = "sha256-fv32GYy8Y7yrPoqwPtrH1LpH33vezmfzvzSNsnwam18=";
+            hash = "sha256-jb7yfzbFBxbr24mrql5PUKMHxsHZLbo8Kp5w8/igrTI=";
           };
           "golang.org/x/mod" = fetchFromGoProxy {
             importPath = "golang.org/x/mod";
             version = "v0.22.0";
-            hash = "sha256-8M6tZF3YvI77rvZZK66udF/zsMfRs2NUhvLcGxE1/j4=";
+            hash = "sha256-Gw+3Nxa+bNKqVtPggQWdrFYVBjbb1XkmY8c6GICozPU=";
           };
           "golang.org/x/net" = fetchFromGoProxy {
             importPath = "golang.org/x/net";
             version = "v0.34.0";
-            hash = "sha256-zyXIkUJZV1Y25KTsjG+sGeWvV/TeqWycTMzfqYOESS0=";
+            hash = "sha256-obDSk+obB3o9FvbmstVho8+IDrPnp9tVPnwuRhB2z0g=";
           };
           "golang.org/x/telemetry" = fetchFromGoProxy {
             importPath = "golang.org/x/telemetry";
             version = "v0.0.0-20250117155846-04cd7bae618c";
-            hash = "sha256-KuhoHiV8U098SD124Py6U70QJPanIUhVBWaiLJ+RPrw=";
+            hash = "sha256-0pQI6Ike92VDZB+gA5WOp8d7tbaAtGnyggcMYh+JpGs=";
           };
           "golang.org/x/term" = fetchFromGoProxy {
             importPath = "golang.org/x/term";
             version = "v0.28.0";
-            hash = "sha256-Ri1Qrlq0OYnqmfsH7UoFK+iblEOwnM4WKQYJzAIcavA=";
+            hash = "sha256-gzgGVvx6+sx1iN/2tq040OadWxRP1Kwb8mQ/cmkksmo=";
           };
           "golang.org/x/text" = fetchFromGoProxy {
             importPath = "golang.org/x/text";
             version = "v0.21.0";
-            hash = "sha256-1YQLLyVOeEHausyIS4x654nCr3auzSt40ZruL8Hf9HI=";
+            hash = "sha256-0ofHx031lkO/bffzWSX1wrNH5Cn5+nUlVA2vRJul8F4=";
           };
           "golang.org/x/tools" = fetchFromGoProxy {
             importPath = "golang.org/x/tools";
             version = "v0.29.0";
-            hash = "sha256-jlxlV8/yr/cXyVC0x3lo8eYwqbfRO+29oiT3+7mJbKE=";
+            hash = "sha256-AKHikCAGADseTsmU0gJ6xw5iRGaZAANQ+I3XLsEqGq0=";
           };
         };
       in
@@ -245,7 +245,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "golang.org/x/sync";
         version = "0.10.0";
-        hash = "sha256-FYXUV8yjQrLrFYM6Hwv/OvyNuKJxQt4iso4DcBUmnQ8=";
+        hash = "sha256-ZuaERAdlrkGSuH4VDsofBaDIyNuJW1KayISlCg000Mc=";
       }
     ) { };
     "golang.org/x/sys" = callPackage (
@@ -253,7 +253,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "golang.org/x/sys";
         version = "0.29.0";
-        hash = "sha256-1Af536qFQC1kXToTnI/BAud1wpyIeU95BhqpsThcYTo=";
+        hash = "sha256-7XRREQevZFsUFBJqVVl6+Yo7v78Loo7iPFbtTyoLAGU=";
       }
     ) { };
     "golang.org/x/time" = callPackage (
@@ -261,7 +261,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "golang.org/x/time";
         version = "0.9.0";
-        hash = "sha256-Mw7yeAUs/HtfpUA4rHb9OCat9RJGjSYgPGI1W1d15gY=";
+        hash = "sha256-+0Mf+5+grLuZPIkzjeFYWXZUhTVczvSvorsBXkmzlg0=";
       }
     ) { };
     "golang.org/x/xerrors" = callPackage (
@@ -269,7 +269,7 @@ lib.makeScope newScope (
       mkGoModule {
         pname = "golang.org/x/xerrors";
         version = "0.0.0-20190717185122-a985d3407aa7";
-        hash = "sha256-001Bye5gcBBNZf3Pifkp9f4tfJ7UQaunY53yRHxjMxg=";
+        hash = "sha256-aE5/9krYWY5d1sKDxEZMBlnrCBMpMwXtLqnXxK4qv5o=";
       }
     ) { };
   }
