@@ -30,47 +30,6 @@ lib.makeScope newScope (
 
     hooks = callPackage ./hooks { };
 
-    mkGoModule = callPackage (
-      {
-        lib,
-        stdenv,
-        hooks,
-        fetchFromGoProxy,
-      }:
-      {
-        pname,
-        hash ? null,
-        version,
-        buildInputs ? [ ],
-        nativeBuildInputs ? [ ],
-        ...
-      }@args:
-      let
-        args' = lib.removeAttrs args [
-          "hash"
-          "rev"
-          "buildInputs"
-          "nativeBuildInputs"
-        ];
-      in
-      stdenv.mkDerivation (
-        finalAttrs:
-        {
-          inherit pname version;
-          src = fetchFromGoProxy {
-            inherit hash;
-            importPath = pname;
-            version = "v${version}";
-          };
-          nativeBuildInputs = [
-            hooks.makeGoDependency
-          ] ++ nativeBuildInputs;
-          propagatedBuildInputs = buildInputs;
-        }
-        // args'
-      )
-    ) { };
-
     # Fetch source of a Go package from Go proxy.
     fetchFromGoProxy = callPackage ./fetch-from-go-proxy.nix { };
 
@@ -241,36 +200,80 @@ lib.makeScope newScope (
     "golang.org/x/text" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/tools" = callPackage ({ goPackages }: goPackages."_golang.org/x") { };
     "golang.org/x/sync" = callPackage (
-      { mkGoModule }:
-      mkGoModule {
+      {
+        fetchFromGoProxy,
+        goPackages,
+        stdenv,
+      }:
+      stdenv.mkDerivation (finalAttrs: {
         pname = "golang.org/x/sync";
         version = "0.10.0";
-        hash = "sha256-ZuaERAdlrkGSuH4VDsofBaDIyNuJW1KayISlCg000Mc=";
-      }
+        src = fetchFromGoProxy {
+          importPath = "golang.org/x/sync";
+          version = "v${finalAttrs.version}";
+          hash = "sha256-ZuaERAdlrkGSuH4VDsofBaDIyNuJW1KayISlCg000Mc=";
+        };
+        nativeBuildInputs = [
+          goPackages.hooks.makeGoDependency
+        ];
+      })
     ) { };
     "golang.org/x/sys" = callPackage (
-      { mkGoModule }:
-      mkGoModule {
+      {
+        fetchFromGoProxy,
+        goPackages,
+        stdenv,
+      }:
+      stdenv.mkDerivation (finalAttrs: {
         pname = "golang.org/x/sys";
         version = "0.29.0";
-        hash = "sha256-7XRREQevZFsUFBJqVVl6+Yo7v78Loo7iPFbtTyoLAGU=";
-      }
+        src = fetchFromGoProxy {
+          importPath = "golang.org/x/sys";
+          version = "v${finalAttrs.version}";
+          hash = "sha256-7XRREQevZFsUFBJqVVl6+Yo7v78Loo7iPFbtTyoLAGU=";
+        };
+        nativeBuildInputs = [
+          goPackages.hooks.makeGoDependency
+        ];
+      })
     ) { };
     "golang.org/x/time" = callPackage (
-      { mkGoModule }:
-      mkGoModule {
+      {
+        fetchFromGoProxy,
+        goPackages,
+        stdenv,
+      }:
+      stdenv.mkDerivation (finalAttrs: {
         pname = "golang.org/x/time";
         version = "0.9.0";
-        hash = "sha256-+0Mf+5+grLuZPIkzjeFYWXZUhTVczvSvorsBXkmzlg0=";
-      }
+        src = fetchFromGoProxy {
+          importPath = "golang.org/x/time";
+          version = "v${finalAttrs.version}";
+          hash = "sha256-+0Mf+5+grLuZPIkzjeFYWXZUhTVczvSvorsBXkmzlg0=";
+        };
+        nativeBuildInputs = [
+          goPackages.hooks.makeGoDependency
+        ];
+      })
     ) { };
     "golang.org/x/xerrors" = callPackage (
-      { mkGoModule }:
-      mkGoModule {
+      {
+        fetchFromGoProxy,
+        goPackages,
+        stdenv,
+      }:
+      stdenv.mkDerivation (finalAttrs: {
         pname = "golang.org/x/xerrors";
         version = "0.0.0-20190717185122-a985d3407aa7";
-        hash = "sha256-aE5/9krYWY5d1sKDxEZMBlnrCBMpMwXtLqnXxK4qv5o=";
-      }
+        src = fetchFromGoProxy {
+          importPath = "golang.org/x/xerrors";
+          version = "v${finalAttrs.version}";
+          hash = "sha256-aE5/9krYWY5d1sKDxEZMBlnrCBMpMwXtLqnXxK4qv5o=";
+        };
+        nativeBuildInputs = [
+          goPackages.hooks.makeGoDependency
+        ];
+      })
     ) { };
   }
   // (
