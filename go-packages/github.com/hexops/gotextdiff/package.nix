@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/godbus/dbus/v5";
-  version = "5.0.4";
+  pname = "github.com/hexops/gotextdiff";
+  version = "1.0.3";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/godbus/dbus/v5";
+    importPath = "github.com/hexops/gotextdiff";
     version = "v${finalAttrs.version}";
-    hash = "sha256-N51PRBsfZw0A9z/FfwvsiBI8ICbfaX2qQmREeHFkF+g=";
+    hash = "sha256-PQ5UI9aRbt7n90ptsS3fs00AfGDiS5Kaxm5OJrjwwo0=";
   };
 
   nativeBuildInputs = [

@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/mattn/go-colorable";
-  version = "0.1.13";
+  pname = "gopkg.in/yaml.v3";
+  version = "3.0.1";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/mattn/go-colorable";
+    importPath = "gopkg.in/yaml.v3";
     version = "v${finalAttrs.version}";
-    hash = "sha256-4RS7X0kzpgZaHxyr7YvpXyx73r+t2MG9obIZvtRBdJY=";
+    hash = "sha256-zF9M4+1jcuEeaIgmjW9blhgi+ajJZInVjNgSwvhAuGk=";
   };
 
   nativeBuildInputs = [
@@ -19,6 +19,6 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   propagatedBuildInputs = [
-    goPackages."github.com/mattn/go-isatty"
+    goPackages."gopkg.in/check.v1"
   ];
 })

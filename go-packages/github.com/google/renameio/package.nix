@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/godbus/dbus/v5";
-  version = "5.0.4";
+  pname = "github.com/google/renameio";
+  version = "0.1.0";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/godbus/dbus/v5";
+    importPath = "github.com/google/renameio";
     version = "v${finalAttrs.version}";
-    hash = "sha256-N51PRBsfZw0A9z/FfwvsiBI8ICbfaX2qQmREeHFkF+g=";
+    hash = "sha256-TZheOkAf/HX8UIKYd4DweZypKKZOagk98F99v9oZWZ8=";
   };
 
   nativeBuildInputs = [

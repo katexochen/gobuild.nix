@@ -11,7 +11,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGoProxy {
     importPath = "github.com/rs/zerolog";
     version = "v${finalAttrs.version}";
-    hash = "sha256-i/aSYMoNXV7lJGOowlGwYhwbhLvbEgk9bguCxqWg2R4=";
+    hash = "sha256-lkfdZeFcCq8XRBPiNRxezCTGCgTYeEAHYeeWBu2Mxzg=";
   };
 
   nativeBuildInputs = [

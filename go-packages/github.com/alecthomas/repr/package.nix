@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/godbus/dbus/v5";
-  version = "5.0.4";
+  pname = "github.com/alecthomas/repr";
+  version = "0.4.0";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/godbus/dbus/v5";
+    importPath = "github.com/alecthomas/repr";
     version = "v${finalAttrs.version}";
-    hash = "sha256-N51PRBsfZw0A9z/FfwvsiBI8ICbfaX2qQmREeHFkF+g=";
+    hash = "sha256-3zlG7RbVw7pKtDhxwf7PVIn+NuF48vZaSHi8w5kgaZ4=";
   };
 
   nativeBuildInputs = [

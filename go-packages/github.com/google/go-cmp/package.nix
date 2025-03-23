@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/godbus/dbus/v5";
-  version = "5.0.4";
+  pname = "github.com/google/go-cmp";
+  version = "0.6.0";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/godbus/dbus/v5";
+    importPath = "github.com/google/go-cmp";
     version = "v${finalAttrs.version}";
-    hash = "sha256-N51PRBsfZw0A9z/FfwvsiBI8ICbfaX2qQmREeHFkF+g=";
+    hash = "sha256-cTZvg6svBSFLdmNinaT4HPL9cfPeeDSPItHIpK8sijo=";
   };
 
   nativeBuildInputs = [

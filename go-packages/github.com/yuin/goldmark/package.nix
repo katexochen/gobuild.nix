@@ -5,13 +5,13 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/godbus/dbus/v5";
-  version = "5.0.4";
+  pname = "github.com/yuin/goldmark";
+  version = "1.7.8";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/godbus/dbus/v5";
+    importPath = "github.com/yuin/goldmark";
     version = "v${finalAttrs.version}";
-    hash = "sha256-N51PRBsfZw0A9z/FfwvsiBI8ICbfaX2qQmREeHFkF+g=";
+    hash = "sha256-V0Fp4FnBMTSP9tRfmZiOrlTW0QOCPFXkjGlpw+11uy8=";
   };
 
   nativeBuildInputs = [

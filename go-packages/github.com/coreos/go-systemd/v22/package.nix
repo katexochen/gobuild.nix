@@ -2,6 +2,7 @@
   fetchFromGoProxy,
   goPackages,
   stdenv,
+  systemdLibs,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -11,7 +12,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGoProxy {
     importPath = "github.com/coreos/go-systemd/v22";
     version = "v${finalAttrs.version}";
-    hash = "sha256-U1msfUWP5JSS2W3vfpbEs+OkwAxi+MJgIawp/qwke6k=";
+    hash = "sha256-zjFAWCG5CiDitC/qkY0/7C95887WGMlYFA9bxZVZRk8=";
   };
 
   nativeBuildInputs = [
@@ -20,5 +21,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   propagatedBuildInputs = [
     goPackages."github.com/godbus/dbus/v5"
+    systemdLibs
   ];
 })

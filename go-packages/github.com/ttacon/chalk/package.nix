@@ -6,18 +6,18 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/pkg/errors";
-  version = "0.9.1";
+  pname = "github.com/ttacon/chalk";
+  version = "0.0.0-20160626202418-22c06c80ed31";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/pkg/errors";
+    importPath = "github.com/ttacon/chalk";
     version = "v${finalAttrs.version}";
-    hash = "sha256-xqD/59ziFv9tCp+W3kjldaoXK3dEMZbFW9B9t6j0zOM=";
+    hash = "sha256-i4vb0nbwoVsNpABhZ+HgyXGL4TOq/DA3DmVLTu0N0hU=";
   };
 
   postPatch = ''
     export HOME=$(pwd)
-    go mod init github.com/pkg/errors
+    go mod init github.com/ttacon/chalk
   '';
 
   nativeBuildInputs = [

@@ -11,7 +11,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGoProxy {
     importPath = "github.com/rs/xid";
     version = "v${finalAttrs.version}";
-    hash = "sha256-cX1W9lpqWiiECniQZYSbA38CYkmkPXrNq5yWdeVkw4E=";
+    hash = "sha256-tXRd1GoK9FjgW3thc+k77LvE1NasNJn3592WHiVFwqY=";
   };
 
   nativeBuildInputs = [

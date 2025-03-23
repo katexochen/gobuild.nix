@@ -11,7 +11,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGoProxy {
     importPath = "github.com/mattn/go-isatty";
     version = "v${finalAttrs.version}";
-    hash = "sha256-UUc2nOQebFX2fusKvsOGBBpLvcB44p20Iq8v9O26jxY=";
+    hash = "sha256-Nk9cLLLJpiCKPEV2Yw2QZF6Bn/dGJ6l0tD03c4qQlAY=";
   };
 
   nativeBuildInputs = [

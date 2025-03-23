@@ -6,18 +6,18 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "github.com/pkg/errors";
-  version = "0.9.1";
+  pname = "github.com/stretchr/objx";
+  version = "0.1.0";
 
   src = fetchFromGoProxy {
-    importPath = "github.com/pkg/errors";
+    importPath = "github.com/stretchr/objx";
     version = "v${finalAttrs.version}";
-    hash = "sha256-xqD/59ziFv9tCp+W3kjldaoXK3dEMZbFW9B9t6j0zOM=";
+    hash = "sha256-u4F8fN13hj65GHB5GGqF4YSOQeroyDejAM/YvqMCNXc=";
   };
 
   postPatch = ''
     export HOME=$(pwd)
-    go mod init github.com/pkg/errors
+    go mod init github.com/stretchr/objx
   '';
 
   nativeBuildInputs = [
