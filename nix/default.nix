@@ -1,21 +1,3 @@
-let
-  wellKnown = builtins.listToAttrs (
-    map
-      (name: {
-        inherit name;
-        value = null;
-      })
-      [
-        "go"
-        "require"
-        "goPackages"
-        "gobuild-nix-gocacheprog"
-        "fetchers"
-        "hooks"
-        "callPackage"
-      ]
-  );
-in
 {
   go,
   newScope,
@@ -30,17 +12,7 @@ lib.makeScope newScope (
     # Tooling
     inherit go;
 
-    # List all non-known attributes in the require list
-    require = builtins.concatMap (
-      attr:
-      if wellKnown ? ${attr} then
-        [ ]
-      else
-        let
-          value = final.${attr};
-        in
-        if !lib.isDerivation value then [ ] else [ value ]
-    ) (builtins.attrNames final);
+    require = [ ];
 
     goPackages = final;
 

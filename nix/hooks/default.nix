@@ -110,6 +110,29 @@ in
     {
     };
 
+  goPackageHook = callPackage
+    (
+      { hooks, std }:
+        makeSetupHook {
+          name = "go-package-hook";
+          passthru = {
+            inherit go;
+          };
+          propagatedBuildInputs = [
+            go
+            std
+            hooks.unpackGo
+            hooks.configureGo
+            hooks.configureGoCache
+            hooks.buildGo
+            hooks.buildGoCacheOutputSetupHook
+            # hooks.buildGoModCacheOutputSetupHook
+          ];
+        } ./module-hook.sh
+    )
+    {
+    };
+
   goAppHook = callPackage
     (
       { hooks, std }:

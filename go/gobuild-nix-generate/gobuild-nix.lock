@@ -7,7 +7,6 @@ schema = 1
   [locked."golang.org/x/mod"]
     version = "v0.30.0"
     hash = "sha256-dEjRvA/ak+JgGyfQ3jzMc/uiznogPtqv2j+C6xJASqU="
-    require = ["golang.org/x/tools"]
   [locked."golang.org/x/sync"]
     version = "v0.18.0"
     hash = "sha256-Zm4eHAVpxplyeLW55l6JYcHFEEZgfp8WMQt5+Q7LF8o="

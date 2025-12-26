@@ -4,7 +4,7 @@ import (
 	"sort"
 )
 
-func findAllCycles(pkgs map[string]*goPackageLock) [][]string {
+func findAllCycles(pkgs map[string]*goModuleLock) [][]string {
 	var cycles [][]string
 	for _, scc := range findStronglyConnectedComponents(pkgs) {
 		if len(scc) > 1 {
@@ -15,7 +15,7 @@ func findAllCycles(pkgs map[string]*goPackageLock) [][]string {
 	return cycles
 }
 
-func findStronglyConnectedComponents(pkgs map[string]*goPackageLock) [][]string {
+func findStronglyConnectedComponents(pkgs map[string]*goModuleLock) [][]string {
 	index := 0
 	stack := []string{}
 	indices := make(map[string]int)

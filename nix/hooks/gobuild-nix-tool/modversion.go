@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"errors"
 
 	"github.com/adisbladis/gobuild.nix/nix/hooks/gobuild-nix-tool/parexec"
 )
@@ -17,6 +18,14 @@ var moduleNameEscapeRe = regexp.MustCompile(`!([a-z])`)
 
 func discoverModVersions(root string, versions map[string]string, mux *sync.Mutex) error {
 	downloadDir := filepath.Join(root, "cache", "download")
+
+	if _, err := os.Lstat(downloadDir); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil // Ignore non-existent directory
+		}
+
+		return err
+	}
 
 	var recurse func(string) error
 	recurse = func(relPath string) error {

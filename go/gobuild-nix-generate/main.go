@@ -27,17 +27,25 @@ const LOCK_FILE = "gobuild-nix.lock"
 
 var SumFiles = []string{"go.sum", "go.work.sum"}
 
-type goPackageLock struct {
+// Go module dependency
+type goModuleLock struct {
 	Version string   `toml:"version"`
 	Hash    string   `toml:"hash"`
 	Require []string `toml:"require,omitempty"`
 }
 
+// Local Go package
+type goPackageLock struct {
+	Require []string `toml:"require,omitempty"`
+	Dir     string   `toml:"dir"`
+}
+
 // Map goPackagePath -> lock entry
 type lockFile struct {
-	Schema int                       `toml:"schema"`
-	Cycles map[string]int            `toml:"cycles,omitempty"`
-	Locked map[string]*goPackageLock `toml:"locked"`
+	Schema  int                       `toml:"schema"`
+	Cycles  map[string]int            `toml:"cycles,omitempty"`
+	Locked  map[string]*goModuleLock  `toml:"locked"`
+	Package map[string]*goPackageLock `toml:"package,omitempty"`
 }
 
 //go:embed fetcher.nix
@@ -56,9 +64,15 @@ func filter[T any](slice []T, predicate func(T) bool) []T {
 func createLock(directory string, workers int, pkgsFlag string, attrFlag string) (*lockFile, error) {
 	var lockMux sync.Mutex
 	lock := &lockFile{
-		Schema: SCHEMA_VERSION,
-		Locked: make(map[string]*goPackageLock),
-		Cycles: make(map[string]int),
+		Schema:  SCHEMA_VERSION,
+		Locked:  make(map[string]*goModuleLock),
+		Cycles:  make(map[string]int),
+		Package: make(map[string]*goPackageLock),
+	}
+
+	config, err := ReadConfig(directory)
+	if err != nil {
+		return nil, err
 	}
 
 	// If we have a previous lock file re-use hashes instead of re-computing them if the package/version is the same
@@ -258,7 +272,7 @@ func createLock(directory string, workers int, pkgsFlag string, attrFlag string)
 			}
 
 			lockMux.Lock()
-			lock.Locked[download.Path] = &goPackageLock{
+			lock.Locked[download.Path] = &goModuleLock{
 				Version: download.Version,
 				Hash:    hash,
 				Require: require,
@@ -286,9 +300,45 @@ func createLock(directory string, workers int, pkgsFlag string, attrFlag string)
 		})
 	}
 
+	// Decycle the dependency graph
 	for i, cycle := range findAllCycles(lock.Locked) {
 		for _, depGoPackagePath := range cycle {
 			lock.Cycles[depGoPackagePath] = i
+		}
+	}
+
+	// Analyze local packages to achieve per _package_ builds instead of just per _module_.
+	if config.Package {
+		localPackages := make(map[string]struct{})
+
+		goListPackages, err := listWorkspace(directory)
+		if err != nil {
+			return nil, err
+		}
+
+		// Aggregate local packages by import path
+		for _, listPkg := range goListPackages {
+			localPackages[listPkg.ImportPath] = struct{}{}
+		}
+
+		// Filter any dependencies that are not a local dependency.
+		// All subpackages needs to depend on all required Go modules anyway, so no need to store those dependencies.
+		for _, listPkg := range goListPackages {
+			var require []string
+
+			for _, dep := range listPkg.Imports {
+				if _, ok := localPackages[dep]; ok {
+					require = append(require, dep)
+				}
+			}
+
+			slices.Sort(require)
+			require = slices.Compact(require)
+
+			lock.Package[listPkg.ImportPath] = &goPackageLock{
+				Require: require,
+				Dir:     strings.TrimPrefix(listPkg.Dir, directory),
+			}
 		}
 	}
 

@@ -8,8 +8,12 @@ let
     groupBy
     attrNames
     mapAttrs
+    genericClosure
+    pathExists
     ;
   lockSchemaVersion = 1;
+
+  optionalFile = filepath: if pathExists filepath then [ filepath ] else [ ];
 
 in
 {
@@ -18,6 +22,9 @@ in
       goLock,
       go,
       callPackage,
+      lib,
+      overridePackage ? drv: drv,
+      rootDir ? throw "Local package was used but no root directory passed",
     }:
     let
       lockFile = if isAttrs goLock then goLock else fromTOML (readFile goLock);
@@ -79,40 +86,101 @@ in
         in
         {
           inherit cycles;
+
+          require = map (goPackagePath: final.${goPackagePath}) (attrNames lockFile.locked);
         }
-        // mapAttrs (
-          goPackagePath: locked:
-          cyclePkgs.${goPackagePath} or (final.callPackage (
-            {
-              stdenv,
-              fetchers,
-              hooks,
-            }:
-            stdenv.mkDerivation {
-              name = goPackagePath;
-              inherit (locked) version;
+        //
+          # Create a package per Go _module_
+          mapAttrs (
+            goPackagePath: locked:
+            cyclePkgs.${goPackagePath} or (final.callPackage (
+              {
+                stdenv,
+                fetchers,
+                hooks,
+              }:
+              stdenv.mkDerivation {
+                name = goPackagePath;
+                inherit (locked) version;
 
-              src = fetchers.fetchModuleProxy {
-                inherit goPackagePath;
-                inherit (locked) version hash;
+                src = fetchers.fetchModuleProxy {
+                  inherit goPackagePath;
+                  inherit (locked) version hash;
+                };
+
+                passthru = {
+                  inherit cycles;
+                  inherit cyclePkgs;
+                };
+
+                nativeBuildInputs = [
+                  hooks.goModuleHook
+                ];
+
+                propagatedBuildInputs = map (depGoPackagePath: final.${depGoPackagePath} or null) (
+                  locked.require or [ ]
+                );
+
+              }
+            ) { })
+          ) lockFile.locked
+        //
+          # Create a package per local Go _package_
+          mapAttrs (
+            goPackagePath: locked:
+            let
+              # Resolve local package requirements
+              require = genericClosure {
+                startSet = [ { key = goPackagePath; } ];
+                operator =
+                  item:
+                  concatMap (
+                    goPackagePath: if !lockFile.package ? ${goPackagePath} then [ ] else [ { key = goPackagePath; } ]
+                  ) (lockFile.package.${item.key}.require or [ ]);
               };
 
-              passthru = {
-                inherit cycles;
-                inherit cyclePkgs;
-              };
+              # Local package directories to include
+              dirs = map (item: lockFile.package.${item.key}.dir) require;
 
-              nativeBuildInputs = [
-                hooks.goModuleHook
-              ];
+            in
+            overridePackage (
+              final.callPackage (
+                {
+                  stdenv,
+                  hooks,
+                }:
+                stdenv.mkDerivation {
+                  name = goPackagePath;
 
-              propagatedBuildInputs = map (depGoPackagePath: final.${depGoPackagePath} or null) (
-                locked.require or [ ]
-              );
+                  # Create a union of all required local sources
+                  src = lib.fileset.toSource {
+                    root = rootDir;
+                    fileset = (
+                      lib.fileset.unions (
+                        (optionalFile (rootDir + "/go.mod"))
+                        ++ (optionalFile (rootDir + "/go.work"))
+                        ++ map (dir: rootDir + dir) dirs
+                      )
+                    );
+                  };
 
-            }
-          ) { })
-        ) lockFile.locked;
+                  # Only build the current Go package
+                  env.goBuildPackages = goPackagePath + "/...";
+
+                  nativeBuildInputs = [
+                    hooks.goPackageHook
+                  ];
+
+                  passthru = {
+                    inherit goPackagePath;
+                  };
+
+                  propagatedBuildInputs =
+                    final.require ++ map (depGoPackagePath: final.${depGoPackagePath} or null) (locked.require or [ ]);
+                }
+              ) { }
+            )
+          ) (lockFile.package or { });
 
     in
     (callPackage ./nix { inherit go; }).overrideScope overlay';

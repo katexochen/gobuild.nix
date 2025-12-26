@@ -3,6 +3,7 @@ let
   goSet = callPackage gobuild-nix.lib.mkGoSet {
     goLock = ./gobuild-nix.lock;
   };
+
 in
 stdenv.mkDerivation {
   name = "gobuild-nix-generate";
