@@ -39,33 +39,79 @@ type DiskCache struct {
 	wg sync.WaitGroup
 }
 
-func (dc *DiskCache) Get(ctx context.Context, actionID string) (outputID, diskPath string, err error) {
+type getResult struct {
+	outputID string
+	diskPath string
+	err      error
+}
+
+func getFromDir(directory string, actionID string) *getResult {
 	filename := fmt.Sprintf("a-%s", actionID)
 
-	for _, dir := range dc.InputDirs {
-		actionFile := filepath.Join(dir, filename)
+	actionFile := filepath.Join(directory, filename)
 
-		ij, err := os.ReadFile(actionFile)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
+	ij, err := os.ReadFile(actionFile)
+	if err != nil {
+		return nil
+	}
+
+	var ie indexEntry
+	if err := json.Unmarshal(ij, &ie); err != nil {
+		return nil
+	}
+
+	if _, err := hex.DecodeString(ie.OutputID); err != nil {
+		// Protect against malicious non-hex OutputID on disk
+		return nil
+	}
+
+	return &getResult{
+		outputID: ie.OutputID,
+		diskPath: filepath.Join(directory, fmt.Sprintf("o-%v", ie.OutputID)),
+	}
+}
+
+func (dc *DiskCache) Get(ctx context.Context, actionID string) (outputID, diskPath string, err error) {
+	resultCh := make(chan *getResult, 1)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	sem := make(chan struct{}, 32) // Arbitrary number chosen for some parallelism without being crazy
+	var wg sync.WaitGroup
+
+	for _, dir := range dc.InputDirs {
+		wg.Add(1)
+		go func(directory string) {
+			defer wg.Done()
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
 
-			return "", "", nil
-		}
+			res := getFromDir(directory, actionID)
+			if res != nil {
+				select {
+				case resultCh <- res:
+					cancel()
+				case <-ctx.Done():
+				}
+			}
+		}(dir)
+	}
 
-		var ie indexEntry
-		if err := json.Unmarshal(ij, &ie); err != nil {
-			log.Printf("Warning: JSON error for action %q: %v", actionID, err)
-			return "", "", nil
-		}
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
 
-		if _, err := hex.DecodeString(ie.OutputID); err != nil {
-			// Protect against malicious non-hex OutputID on disk
-			return "", "", nil
-		}
-
-		return ie.OutputID, filepath.Join(dir, fmt.Sprintf("o-%v", ie.OutputID)), nil
+	// Wait for first success or all failures
+	if res, ok := <-resultCh; ok {
+		return res.outputID, res.diskPath, nil
 	}
 
 	if dc.Verbose {
